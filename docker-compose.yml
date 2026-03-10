@@ -1,87 +1,24 @@
 services:
-  modern-homepage:
+  homepage:
     build:
       context: ./homepage-data
       dockerfile: Dockerfile.homepage
-    container_name: modern-homepage
+    container_name: theodor-litt-homepage
     ports:
       - "3000:3000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # SSH-Keys für Zugriff auf Remote-Server
+      - ${USERPROFILE}/.ssh:/tmp/host-ssh:ro
     restart: unless-stopped
     environment:
+      - SECRET_KEY=${SECRET_KEY:-theodor-litt-secret-change-in-production}
       - PYTHONUNBUFFERED=1
-    networks:
-      - devnet
-
-  windowsserver:
-    image: dockurr/windows
-    container_name: windowsserver2022
-    environment:
-      VERSION: "2022"
-    devices:
-      - /dev/kvm
-      - /dev/net/tun
-    cap_add:
-      - NET_ADMIN
-    ports:
-      - 8006:8006
-      - 3390:3389/tcp
-      - 3390:3389/udp
-    volumes:
-      - windowsserver_storage:/storage
-    restart: "no"
-    stop_grace_period: 2m
-    networks:
-      - devnet
-
-  debian:
-    image: qemux/qemu
-    container_name: debian
-    environment:
-      BOOT: "debian"
-    devices:
-      - /dev/kvm
-      - /dev/net/tun
-    cap_add:
-      - NET_ADMIN
-    ports:
-      - 8007:8006
-    volumes:
-      - debian_storage:/storage/debian
-    restart: "no"
-    stop_grace_period: 2m
-    networks:
-      - devnet
-
-  vscode:
-    build:
-      context: ./vscode-docker
-    container_name: vscode
-    restart: "no"
-    user: root
-    ports:
-      - "8080:8080"
-    volumes:
-      - vscode_data:/home/coder/project
-      - vscode_config:/home/coder/.local/share/code-server
-    command: >
-      bash -c "
-      source /home/coder/.profile || true;
-      rm -f /home/coder/project/index.html || true;
-      mkdir -p /home/coder/project /home/coder/.local/share/code-server;
-      chown -R coder:coder /home/coder/project /home/coder/.local/share/code-server;
-      exec su -s /bin/bash coder -c 'code-server --bind-addr 0.0.0.0:8080 --auth none /home/coder/project'
-      "
+      - SSH_REMOTE_HOST=${SSH_REMOTE_HOST:-100.66.170.64}
+      - SSH_REMOTE_USER=${SSH_REMOTE_USER:-dataserver}
+      - SSH_REMOTE_PATH=${SSH_REMOTE_PATH:-/srv/schuler-daten}
     networks:
       - devnet
 
 networks:
   devnet:
     driver: bridge
-
-volumes:
-  windowsserver_storage:
-  debian_storage:
-  vscode_data:
-  vscode_config:

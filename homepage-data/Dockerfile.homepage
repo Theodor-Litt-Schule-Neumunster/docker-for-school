@@ -2,15 +2,30 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
+# Installiere nur SSH-Client (keine FUSE/SSHFS mehr)
 RUN apt-get update && apt-get install -y \
-    gcc \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY modern-homepage.py .
+COPY app.py ./app.py
+COPY templates/ ./templates/
+
+# Startup-Script für SSH-Key Setup
+RUN echo '#!/bin/bash\n\
+mkdir -p ~/.ssh && chmod 700 ~/.ssh\n\
+if [ -d "/tmp/host-ssh" ]; then\n\
+  cp /tmp/host-ssh/id_* ~/.ssh/ 2>/dev/null || true\n\
+  cp /tmp/host-ssh/known_hosts* ~/.ssh/ 2>/dev/null || true\n\
+  chmod 600 ~/.ssh/id_* 2>/dev/null || true\n\
+  chmod 644 ~/.ssh/*.pub 2>/dev/null || true\n\
+  chmod 644 ~/.ssh/known_hosts* 2>/dev/null || true\n\
+fi\n\
+exec python app.py\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE 3000
 
-CMD ["python", "modern-homepage.py"]
+CMD ["/entrypoint.sh"]

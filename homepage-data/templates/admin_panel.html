@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Admin-Panel - Theodor Litt{% endblock %}
+
+{% block content %}
+<div x-data="adminPanel()" x-init="init()" x-cloak data-user-stats='{{ user_stats|default({})|tojson|safe }}'>
+    <!-- Header -->
+    <div class="mb-6 flex justify-between items-center">
+        <h1 class="text-3xl font-bold">
+            <i class="fas fa-user-shield mr-2 text-red-500"></i>
+            Administrator-Panel
+        </h1>
+        <div class="flex space-x-4">
+            <span class="text-gray-400">Admin: {{ admin_username }}</span>
+            <a href="{{ url_for('admin_logout') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition">
+                <i class="fas fa-sign-out-alt mr-2"></i>Abmelden
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-6 space-y-3">
+                {% for category, message in messages %}
+                    <div class="rounded-lg p-4 {% if category == 'error' %}bg-red-900/50 border border-red-500{% elif category == 'success' %}bg-green-900/50 border border-green-500{% else %}bg-blue-900/50 border border-blue-500{% endif %}">
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Statistiken -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">Gesamt Benutzer</p>
+                    <p class="text-3xl font-bold text-blue-500">{{ users|length }}</p>
+                </div>
+                <i class="fas fa-users text-4xl text-blue-500/30"></i>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">Aktive VMs</p>
+                    <p class="text-3xl font-bold text-green-500" x-text="activeVMs"></p>
+                </div>
+                <i class="fas fa-server text-4xl text-green-500/30"></i>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm">System Status</p>
+                    <p class="text-xl font-bold text-green-500">Online</p>
+                </div>
+                <i class="fas fa-check-circle text-4xl text-green-500/30"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Neuen Benutzer erstellen -->
+    <div class="bg-gray-800 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-user-plus text-green-500 mr-2"></i>
+            Neuen Schüler hinzufügen
+        </h2>
+        
+        <a href="{{ url_for('register') }}" class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition">
+            <i class="fas fa-plus mr-2"></i>Neuen Schüler erstellen
+        </a>
+    </div>
+
+    <!-- Benutzerliste -->
+    <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-list text-blue-500 mr-2"></i>
+            Alle Benutzer
+        </h2>
+
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-700">
+                        <th class="text-left p-3">Benutzername</th>
+                        <th class="text-left p-3">Email</th>
+                        <th class="text-left p-3">Erstellt</th>
+                        <th class="text-left p-3">Letzter Login</th>
+                        <th class="text-left p-3">VMs Status</th>
+                        <th class="text-left p-3">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for username, user in users.items() %}
+                    <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        <td class="p-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-user mr-2 text-blue-400"></i>
+                                <span class="font-medium">{{ username }}</span>
+                            </div>
+                        </td>
+                        <td class="p-3 text-gray-400">{{ user.email }}</td>
+                        <td class="p-3 text-gray-400">{{ user.created[:10] if user.created else '-' }}</td>
+                        <td class="p-3 text-gray-400">
+                            {% if user.last_login %}
+                                {{ user.last_login[:19].replace('T', ' ') }}
+                            {% else %}
+                                <span class="text-yellow-500">Noch nie</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3">
+                            {% if user_stats is defined and username in user_stats %}
+                                <div class="flex space-x-2">
+                                    {% if user_stats[username].windows and user_stats[username].windows.running %}
+                                        <span class="px-2 py-1 bg-blue-600 text-xs rounded">Win</span>
+                                    {% endif %}
+                                    {% if user_stats[username].debian and user_stats[username].debian.running %}
+                                        <span class="px-2 py-1 bg-orange-600 text-xs rounded">Deb</span>
+                                    {% endif %}
+                                    {% if user_stats[username].vscode and user_stats[username].vscode.running %}
+                                        <span class="px-2 py-1 bg-purple-600 text-xs rounded">VSC</span>
+                                    {% endif %}
+                                    {% if (not user_stats[username].windows or not user_stats[username].windows.running) and (not user_stats[username].debian or not user_stats[username].debian.running) and (not user_stats[username].vscode or not user_stats[username].vscode.running) %}
+                                        <span class="text-gray-500 text-xs">Keine VMs aktiv</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-gray-500 text-xs">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3">
+                            <div class="flex space-x-2">
+                                <form method="POST" action="{{ url_for('admin_reset_password', username=username) }}" class="inline">
+                                    <input type="text" name="new_password" placeholder="Neues PW" class="px-2 py-1 bg-gray-700 rounded text-sm w-24">
+                                    <button type="submit" class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition" title="Passwort zurücksetzen">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin_delete_user', username=username) }}" onsubmit="return confirm('Wirklich {{ username }} und alle VMs löschen?')" class="inline">
+                                    <button type="submit" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition" title="Benutzer löschen">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function adminPanel() {
+    return {
+        activeVMs: 0,
+        
+        init() {
+            this.countActiveVMs();
+        },
+        
+        countActiveVMs() {
+            try {
+                const statsJson = this.$el.getAttribute('data-user-stats');
+                const stats = statsJson ? JSON.parse(statsJson) : {};
+                let count = 0;
+                
+                for (const username in stats) {
+                    if (stats[username].windows && stats[username].windows.running) count++;
+                    if (stats[username].debian && stats[username].debian.running) count++;
+                    if (stats[username].vscode && stats[username].vscode.running) count++;
+                }
+                
+                this.activeVMs = count;
+            } catch (error) {
+                console.error('Error counting VMs:', error);
+                this.activeVMs = 0;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

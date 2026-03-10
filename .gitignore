@@ -1,0 +1,50 @@
+# Umgebungsvariablen (sensible Daten)
+.env
+.env.local
+.env.*.local
+
+# SSH-Keys (niemals hochladen!)
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Docker
+.dockerignore
+
+# Backup-Ordner
+_backup*
+*.backup
+
+# Logs
+*.log
+logs/
+
+# OS-spezifisch
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporäre Dateien
+*.tmp
+*.temp
+~*
