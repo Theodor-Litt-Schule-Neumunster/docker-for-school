@@ -39,11 +39,11 @@ if (-not (Test-DockerCli)) {
 
 try {
     & docker compose version | Out-Null
-    & docker compose up -d modern-homepage | Out-Null
+    & docker compose up -d | Out-Null
 } catch {
     try {
         & docker-compose version | Out-Null
-        & docker-compose up -d modern-homepage | Out-Null
+        & docker-compose up -d | Out-Null
     } catch {
         Write-Host "Docker Compose wurde nicht gefunden. Bitte Docker Desktop installieren." -ForegroundColor Red
         exit 1

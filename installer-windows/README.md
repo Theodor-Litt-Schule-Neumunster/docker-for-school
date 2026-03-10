@@ -9,8 +9,8 @@ description: Windows Installer bauen (Inno Setup)
 
 ## Inhalt
 
-- `docker-for-school.iss` erstellt den Installer
-- `start-docker-for-school.ps1` startet nur `modern-homepage` und öffnet den Browser
+- `DockerLab.iss` erstellt den Installer
+- `start-DockerLab.ps1` startet alle Services und öffnet den Browser
 
 ## Build
 
@@ -18,15 +18,15 @@ description: Windows Installer bauen (Inno Setup)
 2. In diesem Ordner ausführen:
 
 ```powershell
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .\docker-for-school.iss
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .\DockerLab.iss
 ```
 
 ## Ergebnis
 
-- `Docker-for-School-Setup.exe` erscheint in `installer-windows/`
+- `DockerLab-Setup.exe` erscheint in `installer-windows/`
 
 ## Nutzung (Schüler)
 
 1. Docker Desktop installieren
-2. `Docker-for-School-Setup.exe` installieren
-3. Desktop-Icon oder Startmenü: **Docker-for-School**
+2. `DockerLab-Setup.exe` installieren
+3. Desktop-Icon oder Startmenü: **DockerLab**

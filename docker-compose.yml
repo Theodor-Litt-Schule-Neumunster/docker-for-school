@@ -8,7 +8,6 @@ services:
       - "3000:3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./homepage-data:/app
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
@@ -30,7 +29,7 @@ services:
       - 3390:3389/tcp
       - 3390:3389/udp
     volumes:
-      - ./windowsserver2022:/storage
+      - windowsserver_storage:/storage
     restart: "no"
     stop_grace_period: 2m
     networks:
@@ -49,7 +48,7 @@ services:
     ports:
       - 8007:8006
     volumes:
-      - ./debian:/storage
+      - debian_storage:/storage/debian
     restart: "no"
     stop_grace_period: 2m
     networks:
@@ -60,21 +59,29 @@ services:
       context: ./vscode-docker
     container_name: vscode
     restart: "no"
+    user: root
     ports:
       - "8080:8080"
     volumes:
-      - ./vscode-data:/home/coder/project
-      - ./vscode-config:/home/coder/.local/share/code-server
-    command:
-      - "code-server"
-      - "--bind-addr"
-      - "0.0.0.0:8080"
-      - "--auth"
-      - "none"
-      - "/home/coder/project"
+      - vscode_data:/home/coder/project
+      - vscode_config:/home/coder/.local/share/code-server
+    command: >
+      bash -c "
+      source /home/coder/.profile || true;
+      rm -f /home/coder/project/index.html || true;
+      mkdir -p /home/coder/project /home/coder/.local/share/code-server;
+      chown -R coder:coder /home/coder/project /home/coder/.local/share/code-server;
+      exec su -s /bin/bash coder -c 'code-server --bind-addr 0.0.0.0:8080 --auth none /home/coder/project'
+      "
     networks:
       - devnet
 
 networks:
   devnet:
     driver: bridge
+
+volumes:
+  windowsserver_storage:
+  debian_storage:
+  vscode_data:
+  vscode_config:
