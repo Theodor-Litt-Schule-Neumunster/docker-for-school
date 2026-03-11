@@ -4,12 +4,12 @@
 ### 1. Voraussetzungen
 
 - Docker & Docker Compose installiert
-- SSH-Zugriff auf den Remote-Server (100.66.170.64)
+- SSH-Zugriff auf den Remote-Server (192.168.178.1)
 - SSH-Key-Authentifizierung eingerichtet
 
 ### 2. Server-seitige Einrichtung
 
-Auf dem **SSH-Server** (100.66.170.64):
+Auf dem **SSH-Server** (192.168.178.1):
 
 ```bash
 # 1. Verzeichnis erstellen
@@ -26,7 +26,7 @@ Inhalt der `admin_credentials.yml`:
 admins:
   - username: "admin"
     password: "IhrSicheresAdminPasswort123!"
-    email: "admin@theodor-litt.de"
+    email: "admin@dockerlab.de"
     description: "Haupt-Administrator"
 ```
 
@@ -46,7 +46,7 @@ notepad .env
 
 Inhalt der `.env`:
 ```env
-SSH_REMOTE_HOST=100.66.170.64
+SSH_REMOTE_HOST=192.168.178.1
 SSH_REMOTE_USER=dataserver
 SSH_REMOTE_PATH=/srv/schuler-daten
 SECRET_KEY=IhrGeheimesSecretKeyHier
@@ -67,7 +67,7 @@ type $env:USERPROFILE\.ssh\id_rsa.pub | ssh dataserver@100.66.170.64 "cat >> ~/.
 ssh dataserver@100.66.170.64 "ls -la /srv/schuler-daten"
 ```
 
-### 5. Docker-Container starten
+### 5. Docker-Container starten (Lokal)
 
 ```powershell
 # Container bauen und starten
@@ -105,7 +105,7 @@ d:\Neuer Ordner\
         └── user_dashboard_new.html
 ```
 
-**Auf dem SSH-Server (100.66.170.64):**
+**Auf dem SSH-Server (192.168.178.1):**
 ```
 /srv/schuler-daten/
 ├── admin_credentials.yml    (Admin-Zugangsdaten)
@@ -144,11 +144,11 @@ dir $env:USERPROFILE\.ssh\id_rsa
 ```
 
 **Admin-Credentials funktionieren nicht:**
-- Prüfen Sie die Datei auf dem Server: `ssh dataserver@100.66.170.64 "cat /srv/schuler-daten/admin_credentials.yml"`
+- Prüfen Sie die Datei auf dem Server: `ssh dataserver@192.168.178.1 "cat /srv/schuler-daten/admin_credentials.yml"`
 - Prüfen Sie YAML-Syntax (keine Tabs, korrekte Einrückung)
 
 **Users werden nicht gespeichert:**
-- Prüfen Sie Schreibrechte: `ssh dataserver@100.66.170.64 "ls -la /srv/schuler-daten"`
+- Prüfen Sie Schreibrechte: `ssh dataserver@192.168.178.1 "ls -la /srv/schuler-daten"`
 - Sollte: `drwxr-xr-x dataserver dataserver`
 
 ### 10. Sicherheitshinweise
@@ -179,26 +179,9 @@ dir $env:USERPROFILE\.ssh\id_rsa
 - ✅ Einfaches Login-System
 - ✅ Keine lokalen Daten mehr
 
-### 12. Datei-Umbenennungen (noch durchzuführen)
-
-Nach erfolgreicher Implementierung müssen Sie noch die neuen Dateien aktivieren:
-
-```powershell
-# Im Verzeichnis: d:\Neuer Ordner\homepage-data\
-
-# Templates
-mv templates\base_new.html templates\base.html -Force
-mv templates\login_new.html templates\login.html -Force
-mv templates\register_new.html templates\register.html -Force
-mv templates\user_dashboard_new.html templates\user_dashboard.html -Force
-
-# App (wird bereits im Dockerfile gemacht)
-# app_new_ssh.py -> wird zu app.py kopiert
-```
-
 ### Support
 
 Bei Problemen prüfen Sie:
 1. Docker-Logs: `docker-compose logs -f`
-2. SSH-Verbindung: `ssh dataserver@100.66.170.64`
-3. Server-Dateien: `ssh dataserver@100.66.170.64 "ls -la /srv/schuler-daten"`
+2. SSH-Verbindung: `ssh dataserver@192.168.178.1`
+3. Server-Dateien: `ssh dataserver@192.168.178.1 "ls -la /srv/schuler-daten"`
