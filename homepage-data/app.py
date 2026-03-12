@@ -7,8 +7,10 @@ from requests.auth import HTTPBasicAuth
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, Response, stream_with_context
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dockerlab-secret-key')
+import json
 DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
 LOGS_PATH = os.path.join(DATA_PATH, 'logs')
+CONTAINERS_FILE = os.path.join(DATA_PATH, 'containers.json')
 NEXTCLOUD_URL = os.getenv('NEXTCLOUD_URL', '')
 NEXTCLOUD_USERNAME = os.getenv('NEXTCLOUD_USERNAME', '')
 NEXTCLOUD_PASSWORD = os.getenv('NEXTCLOUD_PASSWORD', '')
@@ -50,8 +52,11 @@ def sync_to_nextcloud():
     try:
         webdav_url = f"{NEXTCLOUD_URL}/remote.php/dav/files/{NEXTCLOUD_USERNAME}{NEXTCLOUD_PATH}/containers.json"
         
-        with open(CONTAINERS_FILE, 'r', encoding='utf-8') as f:
-            content = f.read()
+        containers = get_all_containers()
+        content = json.dumps(containers, indent=2, default=str)
+        os.makedirs(DATA_PATH, exist_ok=True)
+        with open(CONTAINERS_FILE, 'w', encoding='utf-8') as f:
+            f.write(content)
         
         response = requests.put(
             webdav_url,
@@ -82,7 +87,7 @@ def sync_from_nextcloud():
         )
         
         if response.status_code == 200:
-            ensure_data_directory()
+            os.makedirs(DATA_PATH, exist_ok=True)
             with open(CONTAINERS_FILE, 'w', encoding='utf-8') as f:
                 f.write(response.text)
             return {'success': True, 'message': 'Erfolgreich von Nextcloud synchronisiert'}
