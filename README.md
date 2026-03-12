@@ -3,7 +3,6 @@
 > **Für wen ist diese Anleitung?**  
 > Diese Anleitung richtet sich an alle, die noch keine oder wenig Erfahrung mit Docker haben. Jeder Begriff wird erklärt, jeder Schritt wird begründet. Wer schon Docker-Erfahrung hat, kann einfach in die gewünschten Kapitel springen.
 
----
 
 ## Inhaltsverzeichnis
 
@@ -23,7 +22,6 @@
 14. [DockerLab deinstallieren](#14-dockerlab-deinstallieren)
 15. [Glossar – Fachbegriffe erklärt](#15-glossar--fachbegriffe-erklärt)
 
----
 
 ## 1. Was ist Docker überhaupt?
 
@@ -51,7 +49,6 @@ Docker packt ein Programm zusammen mit allem, was es braucht (Laufzeit, Biblioth
 - **Kein Aufräumen**: Löscht du den Container, ist alles weg – keine Rückstände auf dem System.
 - **Reproduzierbarkeit**: Das Programm läuft auf deinem PC genauso wie bei einem Kollegen.
 
----
 
 ## 2. Was ist DockerLab und wozu brauche ich es?
 
@@ -71,7 +68,6 @@ Docker packt ein Programm zusammen mit allem, was es braucht (Laufzeit, Biblioth
 - DockerLab ist kein vollständiges Docker-Management-Tool wie Portainer. Es ist ein schlankes, persönliches Werkzeug für den Heimgebrauch.
 - Es ist nicht für den produktiven Einsatz auf öffentlich zugänglichen Servern konzipiert.
 
----
 
 ## 3. Wie ist das Projekt aufgebaut?
 
@@ -135,12 +131,11 @@ Die Python-Pakete die DockerLab benötigt:
 
 | Paket | Wozu? |
 |---|---|
-| `Flask` | Web-Framework – macht aus Python eine Webanwendung |
+| `Flask` | Web-Framework, macht aus Python eine Webanwendung |
 | `Werkzeug` | Hilfsbibliothek für Flask |
-| `requests` | HTTP-Anfragen stellen – z. B. für Nextcloud WebDAV |
+| `requests` | HTTP-Anfragen stellen, z. B. für Nextcloud WebDAV |
 | `docker` | Offizielles Python-SDK für die Docker-API |
 
----
 
 ## 4. Voraussetzungen – Was muss vorher installiert sein?
 
@@ -192,7 +187,6 @@ docker compose version
 
 Du solltest `Docker Compose version v2.x.x` sehen.
 
----
 
 ## 5. Schritt-für-Schritt-Installation
 
@@ -282,7 +276,6 @@ NAME                   STATUS          PORTS
 dockerlab-homepage     Up (healthy)    0.0.0.0:3000->3000/tcp
 ```
 
----
 
 ## 6. Die Oberfläche verstehen
 
@@ -321,7 +314,6 @@ Ein großer Button unten in der Liste öffnet ein Formular zum Erstellen eines n
 | 🟡 Gelb | `restarting` | Container startet neu |
 | ⚪ Grau | `created` | Container wurde erstellt, aber noch nicht gestartet |
 
----
 
 ## 7. Container erstellen – Schritt für Schritt
 
@@ -376,7 +368,6 @@ Nach dem Klick auf "Erstellen" dauert es einen Moment, bis das Image heruntergel
 3. Dieser Ordner wird in den Container als `/data` gemountet (Ausnahmen: code-server → `/home/coder/project`, VM-Container → `/storage`)
 4. Der Container wird mit den angegebenen Einstellungen gestartet
 
----
 
 ## 8. Container verwalten
 
@@ -416,7 +407,6 @@ Entspricht einem Stopp gefolgt von einem Start – in einem Schritt.
 
 Eine Bestätigungsabfrage im Browser schützt vor versehentlichem Löschen.
 
----
 
 ## 9. Nextcloud-Synchronisation einrichten (optional)
 
@@ -472,7 +462,6 @@ DockerLab verwendet das **WebDAV-Protokoll**, das Nextcloud standardmäßig anbi
 - **Upload**: `HTTP PUT` → `https://nextcloud/remote.php/dav/files/<user>/DockerLab/containers.json`
 - **Download**: `HTTP GET` → gleiche URL
 
----
 
 ## 10. Praxisbeispiele
 
@@ -491,7 +480,6 @@ Erreichbar unter: `http://localhost:8080`
 
 Den Inhalt von `data/containers/webserver/` kannst du mit eigenen HTML-Dateien füllen. Nginx sucht standardmäßig in `/usr/share/nginx/html/` – du müsstest das Volume-Mapping noch anpassen, aber für Testzwecke zeigt Nginx direkt die Standard-Welcome-Page.
 
----
 
 ### PostgreSQL-Datenbank
 
@@ -508,7 +496,6 @@ Verbindungsstring für deine Anwendung: `postgresql://admin:geheimesPasswort@loc
 
 > **Wichtig:** Ersetze `geheimesPasswort` durch ein echtes, sicheres Passwort!
 
----
 
 ### Redis-Cache
 
@@ -527,7 +514,6 @@ docker exec -it redis-cache redis-cli ping
 # Ausgabe: PONG
 ```
 
----
 
 ### VS Code im Browser (code-server)
 
@@ -544,7 +530,6 @@ Erreichbar unter: `http://localhost:8443`
 
 Deine Projektdateien werden in `data/containers/vscode/` gespeichert.
 
----
 
 ### WordPress + MySQL (zwei Container)
 
@@ -570,7 +555,6 @@ WordPress benötigt eine Datenbank. Erstelle zunächst MySQL:
 
 > **Hinweis:** Der Hostname `wordpress-db` funktioniert, weil beide Container im gleichen Docker-Netzwerk (`devnet`) sind und Docker automatisch Container-Namen als Hostnamen auflöst.
 
----
 
 ## 11. Was passiert im Hintergrund? (Technik erklärt)
 
@@ -633,7 +617,6 @@ DockerLab erkennt spezielle Container-Typen automatisch und passt das Verhalten 
 | VS Code (code-server) | `'codercom/code-server'` im Image-Namen | Volume als `/home/coder/project`, Start-Argument `--auth none` |
 | Alle anderen | *(kein Match)* | Volume als `/data` |
 
----
 
 ## 12. Häufige Fehler und Lösungen
 
@@ -649,7 +632,6 @@ DockerLab erkennt spezielle Container-Typen automatisch und passt das Verhalten 
    - macOS/Linux: `lsof -i :8080`
 2. Wähle einen anderen Host-Port (z. B. statt `8080:80` verwende `8081:80`)
 
----
 
 ### "No such host" / DNS-Fehler bei Docker Hub
 
@@ -664,7 +646,6 @@ DockerLab erkennt spezielle Container-Typen automatisch und passt das Verhalten 
 4. Prüfe ob `registry-1.docker.io` auflösbar ist: `nslookup registry-1.docker.io`
 5. Als letztes Mittel: Docker Desktop neu starten
 
----
 
 ### DockerLab zeigt keine Container an
 
@@ -681,7 +662,6 @@ DockerLab erkennt spezielle Container-Typen automatisch und passt das Verhalten 
 docker compose logs homepage
 ```
 
----
 
 ### Nextcloud-Sync funktioniert nicht
 
@@ -695,7 +675,6 @@ docker compose logs homepage
 **Ordner manuell in Nextcloud erstellen:**
 Falls der konfigurierte `NEXTCLOUD_PATH` (Standard: `/DockerLab`) in Nextcloud noch nicht existiert, muss er einmalig manuell erstellt werden.
 
----
 
 ### "Container mit diesem Image existiert bereits"
 
@@ -708,7 +687,6 @@ Falls der konfigurierte `NEXTCLOUD_PATH` (Standard: `/DockerLab`) in Nextcloud n
 - Lösche den alten Container, falls er nicht mehr benötigt wird
 - Oder wähle eine andere Image-Version (z. B. `nginx:1.25` statt `nginx:latest`)
 
----
 
 ### DockerLab-Seite lädt nicht (localhost:3000)
 
@@ -733,7 +711,6 @@ docker compose down
 docker compose up -d
 ```
 
----
 
 ### Nach einem Neustart des PCs sind die Container weg
 
@@ -746,7 +723,6 @@ docker update --restart unless-stopped mein-container-name
 
 DockerLab selbst startet automatisch nach einem Neustart (dank `restart: unless-stopped` in der `docker-compose.yml`).
 
----
 
 ## 13. Sicherheitshinweise
 
@@ -783,7 +759,6 @@ Verwende immer App-Passwörter für die Nextcloud-Integration. App-Passwörter h
 - Können nur auf Dateizugriff (WebDAV) beschränkt werden
 - Schützen das Hauptkonto bei einer Kompromittierung der `.env`-Datei
 
----
 
 ## 14. DockerLab deinstallieren
 
@@ -814,36 +789,34 @@ Remove-Item -Recurse -Force .\data\
 rm -rf data/
 ```
 
----
 
 ## 15. Glossar – Fachbegriffe erklärt
 
 | Begriff | Erklärung |
 |---|---|
-| **API** | Application Programming Interface – eine definierte Schnittstelle, über die Programme miteinander kommunizieren |
+| **API** | Application Programming Interface, eine definierte Schnittstelle, über die Programme miteinander kommunizieren |
 | **Container** | Ein isolierter, in sich geschlossener Prozess in Docker |
-| **Daemon** | Ein Hintergrundprozess – der Docker-Daemon (`dockerd`) läuft im Hintergrund und verwaltet alle Container |
+| **Daemon** | Ein Hintergrundprozess, der Docker-Daemon (`dockerd`) läuft im Hintergrund und verwaltet alle Container |
 | **Detached (`-d`)** | Container läuft im Hintergrund, blockiert das Terminal nicht |
 | **Docker Hub** | Offizielle Registry (Sammlung) der Docker-Images unter `hub.docker.com` |
 | **Dockerfile** | Eine Textdatei mit Anweisungen, wie ein Docker-Image gebaut wird |
 | **docker-compose.yml** | Konfigurationsdatei für Docker Compose |
-| **Environment Variable** | Eine Variable, die dem Programm bei Start übergeben wird – üblich für Konfiguration (Passwörter, URLs etc.) |
+| **Environment Variable** | Eine Variable, die dem Programm bei Start übergeben wird, üblich für Konfiguration (Passwörter, URLs etc.) |
 | **Flask** | Ein leichtgewichtiges Python-Framework für Webanwendungen |
-| **Graceful Shutdown** | Das Programm wird "sanft" beendet – es bekommt Zeit zum Aufräumen (im Gegensatz zum harten Abbruch) |
+| **Graceful Shutdown** | Das Programm wird "sanft" beendet, es bekommt Zeit zum Aufräumen (im Gegensatz zum harten Abbruch) |
 | **Healthcheck** | Automatische Überprüfung, ob ein Container noch korrekt funktioniert |
 | **Image** | Eine unveränderliche Vorlage/Blaupause für einen Container |
-| **JSON** | JavaScript Object Notation – ein einfaches Textformat zur Datenspeicherung: `{"schluessel": "wert"}` |
+| **JSON** | JavaScript Object Notation, ein einfaches Textformat zur Datenspeicherung: `{"schluessel": "wert"}` |
 | **Mount / Volume** | Ein Ordner des Hosts der in den Container eingebunden wird |
 | **Port** | Eine Nummer (1–65535), über die ein Netzwerkdienst erreichbar ist |
 | **Registry** | Ein Server der Docker-Images speichert und bereitstellt (z. B. Docker Hub) |
-| **REST API** | Ein Stil für Webschnittstellen – Aktionen werden über HTTP-Methoden (GET, POST, DELETE) ausgedrückt |
+| **REST API** | Ein Stil für Webschnittstellen, Aktionen werden über HTTP-Methoden (GET, POST, DELETE) ausgedrückt |
 | **SIGTERM / SIGKILL** | Unix-Signale zum Beenden von Prozessen. SIGTERM = "bitte beende dich", SIGKILL = "sofortiger Abbruch" |
-| **Socket** | Ein Kommunikationsendpunkt – `docker.sock` ist ein Unix-Socket für die Docker-API |
+| **Socket** | Ein Kommunikationsendpunkt, `docker.sock` ist ein Unix-Socket für die Docker-API |
 | **TAG** | Die Version eines Images (z. B. `latest`, `alpine`, `3.9-slim`) |
-| **WebDAV** | Web Distributed Authoring and Versioning – ein Protokoll für Dateizugriff über HTTP, wird von Nextcloud verwendet |
-| **WSL 2** | Windows Subsystem for Linux 2 – ermöglicht Linux-Prozesse unter Windows, wird von Docker Desktop genutzt |
+| **WebDAV** | Web Distributed Authoring and Versioning, ein Protokoll für Dateizugriff über HTTP, wird von Nextcloud verwendet |
+| **WSL 2** | Windows Subsystem for Linux 2, ermöglicht Linux-Prozesse unter Windows, wird von Docker Desktop genutzt |
 
----
 
 ## Schnellübersicht – Häufige Befehle
 
@@ -870,6 +843,5 @@ docker ps -a
 docker compose up -d --build
 ```
 
----
 
 *Letzte Aktualisierung: März 2026 | DockerLab – Persönliches Container-Management für Zuhause*
