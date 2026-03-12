@@ -1,15 +1,12 @@
-# Umgebungsvariablen (sensible Daten)
 .env
 .env.local
 .env.*.local
-
-# SSH-Keys (niemals hochladen!)
+data/
+*_old.py
 *.pem
 *.key
 id_rsa
 id_rsa.pub
-
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -21,26 +18,16 @@ ENV/
 *.egg-info/
 dist/
 build/
-
-# Docker
 .dockerignore
-
-# Logs
 *.log
 logs/
-
-# OS-spezifisch
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Temporäre Dateien
 *.tmp
 *.temp
 ~*

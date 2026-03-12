@@ -7,19 +7,19 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # SSH-Keys für Zugriff auf Remote-Server (Read-Only)
-      - ${USERPROFILE}/.ssh:/root/.ssh:ro
-      # Docker-Socket für lokale VM-Verwaltung
+      # Docker-Socket für Container-Verwaltung
       - /var/run/docker.sock:/var/run/docker.sock
-      # Lokales VM-Daten-Verzeichnis
-      - ./vm-data:/vm-data
+      # Lokales Daten-Verzeichnis
+      - ./data:/data
     restart: unless-stopped
     environment:
-      - SECRET_KEY=${SECRET_KEY:-change-in-production}
+      - SECRET_KEY=${SECRET_KEY:-dockerlab-secret-key}
       - PYTHONUNBUFFERED=1
-      - SSH_REMOTE_HOST=${SSH_REMOTE_HOST:-192.168.178.1}
-      - SSH_REMOTE_USER=${SSH_REMOTE_USER:-dataserver}
-      - SSH_REMOTE_PATH=${SSH_REMOTE_PATH:-/srv/schuler-daten}
+      # Nextcloud-Konfiguration (optional)
+      - NEXTCLOUD_URL=${NEXTCLOUD_URL:-}
+      - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME:-}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD:-}
+      - NEXTCLOUD_PATH=${NEXTCLOUD_PATH:-/DockerLab}
     healthcheck:
       test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:3000')"]
       interval: 30s

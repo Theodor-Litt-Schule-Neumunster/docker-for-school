@@ -1,0 +1,652 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DockerLab - Container Verwaltung</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background-start: #0f1117;
+            --background-end: #1a1f2e;
+            --card-background: rgba(30, 38, 55, 0.85);
+            --text-primary: #e2e8f0;
+            --text-secondary: #90a0b7;
+            --accent-primary: #4A90E2;
+            --accent-secondary: #50E3C2;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --success-bg: #1a3a32;
+            --success-text: #50E3C2;
+            --error-bg: #3a1a1a;
+            --error-text: #f87171;
+            --warning-bg: #3a2e1a;
+            --warning-text: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .header {
+            background: var(--card-background);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 var(--shadow-color);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: var(--accent-primary);
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+        
+        .btn-success {
+            background: var(--accent-secondary);
+            color: #004433;
+        }
+        
+        .btn-warning {
+            background: #F6AD55;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #F56565;
+            color: white;
+        }
+        
+        .btn-info {
+            background: #4299E1;
+            color: white;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+        
+        .card {
+            background: var(--card-background);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 var(--shadow-color);
+        }
+        
+        .card h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .controls {
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .container-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .container-table th,
+        .container-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .container-table th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .container-table tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .container-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .container-table td strong {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-transform: capitalize;
+        }
+        
+        .status-running {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .status-exited {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        .status-paused {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3);
+        }
+        
+        .form-group small {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        .activity-log {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .activity-item {
+            padding: 1rem;
+            border-left: 3px solid var(--accent-primary);
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+        
+        .activity-action {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+        }
+        
+        .nextcloud-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.active {
+            background: var(--accent-secondary);
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(80, 227, 194, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(80, 227, 194, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(80, 227, 194, 0); }
+        }
+        
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 1rem;
+            }
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DockerLab</h1>
+            <div class="sync-buttons">
+                <button class="btn btn-success" onclick="syncToNextcloud()">
+                    <span id="sync-to-icon">Zu Nextcloud hochladen</span>
+                </button>
+                <button class="btn btn-info" onclick="syncFromNextcloud()">
+                    <span id="sync-from-icon">Von Nextcloud herunterladen</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="content-grid">
+            <div class="card">
+                <h2><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-server" style="vertical-align: middle; margin-right: 8px;"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>Aktive Container</h2>
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="refreshContainers()">Liste aktualisieren</button>
+                </div>
+                <div id="container-list">
+                    <div class="empty-state">Lade Container...</div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h2><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>Neuen Container erstellen</h2>
+                    <form id="create-container-form" onsubmit="createContainer(event)">
+                        <div class="form-group">
+                            <label for="container-name">Container-Name</label>
+                            <input type="text" id="container-name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="image-name">Docker Image</label>
+                            <input type="text" id="image-name" name="image" required>
+                            <small>z.B. 'ubuntu:latest' oder 'nginx'. Mehr auf <a href="https://hub.docker.com/" target="_blank">Docker Hub</a>.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="ports">Port-Zuweisungen (optional)</label>
+                            <textarea id="ports" name="ports" rows="2" placeholder="z.B. 8080:80, 5432:5432"></textarea>
+                            <small>Format: HOST_PORT:CONTAINER_PORT, kommagetrennt.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            <span id="create-icon">Container erstellen</span>
+                        </button>
+                        <input type="hidden" id="container-env" name="environment" value="">
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-zap" style="vertical-align: middle; margin-right: 8px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>Schnellstarts</h2>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn btn-info" onclick="createQuickContainer('dockurr/windows', 'windows-vm', '3010:8006', 'VERSION=2022')">Windows Server 2022</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('qemux/qemu', 'debian-vm', '3011:8006')">Debian VM</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('nginx', 'my-nginx-server', '8080:80')">Nginx Web Server</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('codercom/code-server', 'vscode', '8443:8443', 'PASSWORD=vscode')">VS Code (code-server)</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('postgres:14-alpine', 'postgres-db', '5432:5432', 'POSTGRES_PASSWORD=postgres,POSTGRES_USER=postgres,POSTGRES_DB=mydb')">PostgreSQL 14</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('dpage/pgadmin4', 'pgadmin', '5050:80', 'PGADMIN_DEFAULT_EMAIL=admin@admin.com,PGADMIN_DEFAULT_PASSWORD=admin')">pgAdmin (DB-Weboberfläche)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshContainers();
+        });
+
+        function showAlert(message, type = 'info') {
+            const colors = { success: '#1a3a32', error: '#3a1a1a', info: '#1a2a3a' };
+            const textColors = { success: '#50E3C2', error: '#f87171', info: '#4A90E2' };
+            const container = document.getElementById('alert-container');
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `padding:1rem 1.5rem;border-radius:8px;margin-bottom:1rem;background:${colors[type]||colors.info};color:${textColors[type]||textColors.info};border:1px solid currentColor;transition:opacity 0.3s;`;
+            alertDiv.textContent = message;
+            container.appendChild(alertDiv);
+            setTimeout(() => { alertDiv.style.opacity = '0'; setTimeout(() => alertDiv.remove(), 300); }, 5000);
+        }
+
+        function showLoading(id, text) {
+            const el = document.getElementById(id);
+            if (el) { el.innerHTML = `<span class="loading"></span> ${text}`; el.disabled = true; }
+        }
+
+        function hideLoading(id, text) {
+            const el = document.getElementById(id);
+            if (el) { el.innerHTML = text; el.disabled = false; }
+        }
+
+        async function refreshContainers() {
+            try {
+                const response = await fetch('/api/containers');
+                const containers = await response.json();
+                const containerList = document.getElementById('container-list');
+                if (containers.length === 0) {
+                    containerList.innerHTML = '<div class="empty-state">Keine Container gefunden. Erstellen Sie einen, um zu beginnen!</div>';
+                    return;
+                }
+                const table = document.createElement('table');
+                table.className = 'container-table';
+                table.innerHTML = `<thead><tr><th>Name</th><th>Image</th><th>Status</th><th>Ports</th><th>Aktionen</th></tr></thead><tbody></tbody>`;
+                const tbody = table.querySelector('tbody');
+                containers.forEach(container => {
+                    const tr = document.createElement('tr');
+                    const statusClass = `status-${container.status.toLowerCase()}`;
+
+                    const isVm = container.image.includes('dockurr/windows') || container.image.includes('qemux/qemu');
+                    let vncPort = null;
+                    if (isVm && container.ports) {
+                        const match = container.ports.match(/(\d+):8006/);
+                        if (match) vncPort = match[1];
+                    }
+                    const vncBtn = (isVm && vncPort && container.status === 'running')
+                        ? `<a class="btn btn-sm" href="http://localhost:${vncPort}" target="_blank" style="background:#7c3aed;color:white;">VNC öffnen</a>`
+                        : '';
+
+                    // Web-Button für nicht-VM Container mit gemapptem Port
+                    let webBtn = '';
+                    if (!isVm && container.status === 'running' && container.ports) {
+                        const webMatch = container.ports.match(/(\d+):/);
+                        if (webMatch) {
+                            webBtn = `<a class="btn btn-sm" href="http://localhost:${webMatch[1]}" target="_blank" style="background:#059669;color:white;">&#127760; Web öffnen</a>`;
+                        }
+                    }
+
+                    tr.innerHTML = `
+                        <td><strong>${container.name}</strong></td>
+                        <td>${container.image}</td>
+                        <td><span class="status-badge ${statusClass}">${container.status}</span></td>
+                        <td>${container.ports}</td>
+                        <td class="action-buttons">
+                            <button class="btn btn-sm btn-success" onclick="containerAction('${container.id}', 'start')" ${container.status === 'running' ? 'disabled' : ''}>Starten</button>
+                            <button class="btn btn-sm btn-warning" onclick="containerAction('${container.id}', 'stop')" ${container.status !== 'running' ? 'disabled' : ''}>Stoppen</button>
+                            <button class="btn btn-sm btn-info" onclick="containerAction('${container.id}', 'restart')">Neustarten</button>
+                            <button class="btn btn-sm" onclick="showLogs('${container.id}', '${container.name}')" style="background:#0369a1;color:white;">Logs</button>
+                            <button class="btn btn-sm btn-danger" onclick="containerAction('${container.id}', 'delete')">Löschen</button>
+                            ${vncBtn}
+                            ${webBtn}
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                containerList.innerHTML = '';
+                containerList.appendChild(table);
+            } catch (error) {
+                showAlert('Container konnten nicht geladen werden.', 'error');
+                document.getElementById('container-list').innerHTML = '<div class="empty-state">Fehler beim Laden der Container.</div>';
+            }
+        }
+
+        async function containerAction(containerId, action) {
+            if (action === 'delete') {
+                if (!confirm('Container wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+            }
+            try {
+                const response = await fetch(`/api/containers/${containerId}/${action}`, { method: 'POST' });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert(`Aktion erfolgreich ausgeführt.`, 'success');
+                } else {
+                    throw new Error(result.error || 'Unbekannter Fehler');
+                }
+            } catch (error) {
+                showAlert(`Fehler: ${error.message}`, 'error');
+            } finally {
+                setTimeout(refreshContainers, 500);
+            }
+        }
+
+        async function createContainer(event) {
+            event.preventDefault();
+            showLoading('create-icon', 'Erstelle...');
+            const form = event.target;
+            const data = Object.fromEntries(new FormData(form).entries());
+            try {
+                const response = await fetch('/api/containers/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('Container erfolgreich erstellt!', 'success');
+                    form.reset();
+                } else {
+                    throw new Error(result.error || 'Container konnte nicht erstellt werden');
+                }
+            } catch (error) {
+                showAlert(`Fehler: ${error.message}`, 'error');
+            } finally {
+                hideLoading('create-icon', 'Container erstellen');
+                setTimeout(refreshContainers, 500);
+            }
+        }
+
+        function createQuickContainer(image, name, ports = '', environment = '') {
+            const isVm = image.includes('qemu') || image.includes('dockurr/windows');
+            if (isVm && !confirm('Dies startet einen VM-Container. Erfordert einen Linux-Host mit aktiviertem KVM. Fortfahren?')) return;
+            document.getElementById('container-name').value = name;
+            document.getElementById('image-name').value = image;
+            document.getElementById('ports').value = ports;
+            document.getElementById('container-env').value = environment;
+            document.getElementById('create-container-form').dispatchEvent(new Event('submit'));
+        }
+
+        async function syncToNextcloud() {
+            if (!confirm('Lokale Daten zu Nextcloud hochladen? Die Daten auf dem Server werden überschrieben.')) return;
+            showLoading('sync-to-icon', 'Lade hoch...');
+            try {
+                const response = await fetch('/api/nextcloud/sync-to', { method: 'POST' });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('Erfolgreich zu Nextcloud hochgeladen.', 'success');
+                } else {
+                    throw new Error(result.error || 'Synchronisierung fehlgeschlagen');
+                }
+            } catch (error) {
+                showAlert(`Fehler: ${error.message}`, 'error');
+            } finally {
+                hideLoading('sync-to-icon', 'Zu Nextcloud hochladen');
+            }
+        }
+
+        async function syncFromNextcloud() {
+            if (!confirm('Daten von Nextcloud herunterladen? Lokale Daten werden überschrieben.')) return;
+            showLoading('sync-from-icon', 'Lade herunter...');
+            try {
+                const response = await fetch('/api/nextcloud/sync-from', { method: 'POST' });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert('Erfolgreich von Nextcloud heruntergeladen.', 'success');
+                } else {
+                    throw new Error(result.error || 'Synchronisierung fehlgeschlagen');
+                }
+            } catch (error) {
+                showAlert(`Fehler: ${error.message}`, 'error');
+            } finally {
+                hideLoading('sync-from-icon', 'Von Nextcloud herunterladen');
+                setTimeout(refreshContainers, 500);
+            }
+        }
+
+        let _logsEventSource = null;
+
+        async function showLogs(containerId, containerName) {
+            // Alten Stream schließen falls noch offen
+            if (_logsEventSource) { _logsEventSource.close(); _logsEventSource = null; }
+
+            const modal = document.getElementById('logs-modal');
+            const content = document.getElementById('logs-content');
+            const title = document.getElementById('logs-modal-title');
+            const indicator = document.getElementById('logs-live-indicator');
+
+            title.textContent = `Logs: ${containerName}`;
+            content.textContent = '';
+            modal.style.display = 'flex';
+            indicator.style.display = 'inline-block';
+
+            const es = new EventSource(`/api/containers/${containerId}/logs`);
+            _logsEventSource = es;
+
+            es.onmessage = (e) => {
+                const atBottom = content.scrollHeight - content.scrollTop - content.clientHeight < 40;
+                content.textContent += e.data + '\n';
+                if (atBottom) content.scrollTop = content.scrollHeight;
+            };
+
+            es.onerror = () => {
+                indicator.style.display = 'none';
+                es.close();
+                _logsEventSource = null;
+            };
+        }
+
+        function closeLogs() {
+            if (_logsEventSource) { _logsEventSource.close(); _logsEventSource = null; }
+            document.getElementById('logs-modal').style.display = 'none';
+            document.getElementById('logs-live-indicator').style.display = 'none';
+        }
+    </script>
+
+    <!-- Logs Modal -->
+    <div id="logs-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+        <div style="width:100%; max-width:960px; background:#1a1f2e; border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:24px; display:flex; flex-direction:column; max-height:90vh;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <h3 id="logs-modal-title" style="margin:0; color:#e2e8f0; font-size:1.1rem;">Logs</h3>
+                    <span id="logs-live-indicator" style="display:none; background:#16a34a; color:white; font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; animation:pulse 2s infinite;">&#9679; LIVE</span>
+                </div>
+                <button onclick="closeLogs()" class="btn btn-sm btn-danger">Schlie&szlig;en</button>
+            </div>
+            <pre id="logs-content" style="background:#0a0d14; color:#a8b8d0; padding:16px; border-radius:8px; overflow:auto; flex:1; font-size:12px; white-space:pre-wrap; word-break:break-all; margin:0;"></pre>
+        </div>
+    </div>
+</body>
+</html>
+                } else {
+                    throw new Error(result.error || 'Synchronisierung fehlgeschlagen');
+                }
+            } catch (error) {
+                showAlert(`Fehler: ${error.message}`, 'error');
+            } finally {
+                hideLoading('sync-from-icon', 'Von Nextcloud herunterladen');
+                setTimeout(refreshContainers, 500);
+            }
+        }
+    </script>
+</body>
+</html>

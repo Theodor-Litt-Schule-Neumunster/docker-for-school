@@ -1,342 +1,169 @@
-<<<<<<< HEAD
-# Theodor Litt - Schüler Login-System
+# DockerLab - Container Management System
 
-Webbasiertes Login-System für Schüler mit VM-Verwaltung und Remote-Datenspeicherung.
+Einfaches Web-Interface zur Verwaltung von Docker-Containern mit lokaler Speicherung und optionaler Nextcloud-Synchronisation.
 
-## 🚀 Quick Start
+## Features
 
-### 1. Voraussetzungen prüfen
+✅ **Container-Verwaltung**
+- Container anzeigen, starten, stoppen, neu starten
+- Neue Container erstellen
+- Container löschen
+- Ports und Umgebungsvariablen konfigurieren
 
-- ✅ Docker Desktop läuft
-- ✅ SSH-Key existiert (`%USERPROFILE%\.ssh\id_rsa` oder `id_ed25519`)
-- ✅ Zugriff auf Server (100.66.170.64)
+✅ **Lokale Speicherung**
+- Alle Daten werden im `data/` Ordner gespeichert
+- Aktivitätsprotokoll für alle Container-Aktionen
+- Persistente Speicherung zwischen Neustarts
 
-### 2. Konfiguration erstellen
+✅ **Nextcloud-Synchronisation** (optional)
+- Manuelles Hochladen zu Nextcloud per Knopfdruck
+- Daten von Nextcloud herunterladen
+- Vollständig optional - funktioniert auch ohne Nextcloud
 
-```powershell
-# .env Datei aus Vorlage erstellen
-copy .env.example .env
+## Installation & Start
 
-# .env bearbeiten (SSH-Server anpassen)
-notepad .env
+### 1. Voraussetzungen
+- Docker & Docker Compose installiert
+- (Optional) Nextcloud-Account für Sync-Funktion
+
+### 2. Konfiguration
+
+Kopieren Sie `.env.example` zu `.env` und passen Sie die Werte an:
+
+```bash
+cp .env.example .env
 ```
 
-### 3. Container starten
+**Ohne Nextcloud:**
+```env
+SECRET_KEY=ihr-geheimer-schluessel
+NEXTCLOUD_URL=
+NEXTCLOUD_USERNAME=
+NEXTCLOUD_PASSWORD=
+```
 
-```powershell
-# Automatischer Start mit Diagnose
-.\start.ps1 start
+**Mit Nextcloud:**
+```env
+SECRET_KEY=ihr-geheimer-schluessel
+NEXTCLOUD_URL=https://ihre-nextcloud.de
+NEXTCLOUD_USERNAME=ihr-username
+NEXTCLOUD_PASSWORD=ihr-app-passwort
+NEXTCLOUD_PATH=/DockerLab
+```
 
-# ODER manuell:
-docker-compose up --build -d
+### 3. Starten
+
+```bash
+docker-compose up -d
 ```
 
 ### 4. Zugriff
 
-- **Homepage:** http://localhost:3000
-- **Admin-Login:** Credentials von Server (`/srv/schuler-daten/admin_credentials.yml`)
+Öffnen Sie im Browser: `http://localhost:3000`
 
----
+## Verwendung
 
-## 📋 Verfügbare Befehle
+### Container erstellen
+1. Klicken Sie auf "**+ Neuer Container**"
+2. Geben Sie Name und Image ein (z.B. `nginx:latest`)
+3. Optional: Ports konfigurieren (z.B. `8080:80`)
+4. Optional: Umgebungsvariablen (z.B. `DB_HOST=localhost`)
+5. Klicken Sie auf "**Container erstellen**"
 
-```powershell
-.\start.ps1 start      # Container starten
-.\start.ps1 stop       # Container stoppen
-.\start.ps1 restart    # Container neu starten
-.\start.ps1 logs       # Live-Logs anzeigen
-.\start.ps1 status     # Status anzeigen
-.\start.ps1 fix        # Probleme beheben
-.\start.ps1 clean      # Alles zurücksetzen
+### Container verwalten
+- **▶ Start**: Container starten
+- **⏸ Stop**: Container stoppen
+- **🔄 Restart**: Container neu starten
+- **🗑 Delete**: Container löschen (inkl. Bestätigung)
+
+### Nextcloud-Synchronisation
+Wenn Nextcloud konfiguriert ist:
+
+- **↑ Zu Nextcloud hochladen**: Lädt lokale Container-Daten zu Nextcloud hoch
+- **↓ Von Nextcloud laden**: Lädt gespeicherte Daten von Nextcloud herunter
+
+## Verzeichnisstruktur
+
+```
+DockerLab/
+├── data/                      # Lokale Datenspeicherung
+│   └── containers.json       # Container-Aktionen und Metadaten
+├── homepage-data/            # Anwendungscode
+│   ├── app.py               # Flask-Anwendung
+│   ├── templates/
+│   │   └── main.html       # Web-Interface
+│   ├── Dockerfile.homepage
+│   └── requirements.txt
+├── docker-compose.yml        # Docker-Konfiguration
+└── .env                     # Ihre Konfiguration (nicht in Git!)
 ```
 
----
+## Beispiele
 
-## 💾 Datenspeicherung
+### Nginx Webserver erstellen
+- **Name**: `my-nginx`
+- **Image**: `nginx:latest`
+- **Ports**: `8080:80`
 
-### WICHTIG: Alle Daten werden auf dem Server gespeichert!
+### PostgreSQL Datenbank erstellen
+- **Name**: `my-postgres`
+- **Image**: `postgres:15`
+- **Ports**: `5432:5432`
+- **Environment**: `POSTGRES_PASSWORD=geheim, POSTGRES_USER=admin`
 
-**Lokaler Computer:**
-- Nur Docker-Container und Konfiguration
-- Keine Schüler-Daten oder VMs
+### Redis Cache erstellen
+- **Name**: `my-redis`
+- **Image**: `redis:alpine`
+- **Ports**: `6379:6379`
 
-**Remote-Server (100.66.170.64):**
-- `/srv/schuler-daten/` - Alle Schüler-Daten und VMs
+## Sicherheitshinweise
 
----
+⚠️ **Wichtig:**
+- Ändern Sie `SECRET_KEY` in `.env` für Produktion
+- Verwenden Sie Nextcloud **App-Passwörter** statt Haupt-Passwort
+- Fügen Sie `.env` zur `.gitignore` hinzu (nicht ins Repository!)
+- DockerLab benötigt Zugriff auf Docker-Socket - verwenden Sie es nur in vertrauenswürdigen Umgebungen
 
-## 🧰 Fehlerbehebung
+## Nextcloud einrichten
 
-### Container starten nicht
+1. In Nextcloud einloggen
+2. **Einstellungen** → **Sicherheit** → **App-Passwörter**
+3. Neues App-Passwort erstellen (z.B. "DockerLab")
+4. Passwort in `.env` eintragen
 
-```powershell
-# Automatische Reparatur
-.\start.ps1 fix
+## Troubleshooting
 
-# Logs prüfen
-.\start.ps1 logs
-```
+### Container wird nicht angezeigt
+- Prüfen Sie, ob Docker läuft: `docker ps`
+- Überprüfen Sie die Logs: `docker-compose logs homepage`
 
-### SSH-Verbindung fehlschlägt
+### Nextcloud-Sync funktioniert nicht
+- Prüfen Sie die Zugangsdaten in `.env`
+- Verwenden Sie die vollständige URL mit `https://`
+- Verwenden Sie ein App-Passwort, nicht Ihr Haupt-Passwort
 
-```powershell
-# SSH-Key testen
-ssh dataserver@100.66.170.64 "echo OK"
+### Port bereits belegt
+- Ändern Sie den Port in `docker-compose.yml` (z.B. `3001:3000`)
+- Oder stoppen Sie den anderen Container auf Port 3000
 
-# SSH-Key neu generieren
-=======
-# Theodor Litt - SSH-basiertes Login-System
-## Setup-Anleitung
-
-### 1. Voraussetzungen
-
-- Docker & Docker Compose installiert
-- SSH-Zugriff auf den Remote-Server (192.168.178.1)
-- SSH-Key-Authentifizierung eingerichtet
-
-### 2. Server-seitige Einrichtung
-
-Auf dem **SSH-Server** (192.168.178.1):
+## Deinstallation
 
 ```bash
-# 1. Verzeichnis erstellen
-sudo mkdir -p /srv/schuler-daten
-sudo chown dataserver:dataserver /srv/schuler-daten
+# Container stoppen und entfernen
+docker-compose down
 
-# 2. Admin-Credentials-Datei erstellen
-nano /srv/schuler-daten/admin_credentials.yml
+# Inkl. Daten löschen
+rm -rf data/
 ```
 
-Inhalt der `admin_credentials.yml`:
+## Technische Details
 
-```yaml
-admins:
-  - username: "admin"
-    password: "IhrSicheresAdminPasswort123!"
-    email: "admin@dockerlab.de"
-    description: "Haupt-Administrator"
-```
+- **Backend**: Python Flask
+- **Frontend**: HTML/CSS/JavaScript (Vanilla)
+- **Docker-SDK**: Python Docker-Bibliothek
+- **WebDAV**: Nextcloud-Synchronisation über WebDAV-Protokoll
+- **Speicherformat**: JSON
 
-**WICHTIG:** Datei absichern!
-```bash
-chmod 600 /srv/schuler-daten/admin_credentials.yml
-```
+## Lizenz
 
-### 3. Lokale Einrichtung (Windows)
-
-**Option A:** `.env` Datei erstellen (empfohlen)
-
-```bash
-# Im Projektverzeichnis
-notepad .env
-```
-
-Inhalt der `.env`:
-```env
-SSH_REMOTE_HOST=192.168.178.1
-SSH_REMOTE_USER=dataserver
-SSH_REMOTE_PATH=/srv/schuler-daten
-SECRET_KEY=IhrGeheimesSecretKeyHier
-```
-
-**Option B:** Mit Standard-Werten (bereits in docker-compose.yml)
-
-### 4. SSH-Key-Setup (falls noch nicht vorhanden)
-
-```powershell
-# SSH-Key generieren (falls nicht vorhanden)
->>>>>>> 919387af8e60d736714c6b8f6bc4516becd1493a
-ssh-keygen -t rsa -b 4096 -f $env:USERPROFILE\.ssh\id_rsa
-
-# Public Key auf Server kopieren
-type $env:USERPROFILE\.ssh\id_rsa.pub | ssh dataserver@100.66.170.64 "cat >> ~/.ssh/authorized_keys"
-<<<<<<< HEAD
-```
-
----
-
-## 📁 Projekt-Struktur
-
-```
-d:\Neuer Ordner\
-├── docker-compose.yml           # Container-Konfiguration
-├── start.ps1                    # Management-Script
-├── .env                         # Ihre Konfiguration (NICHT committen!)
-├── .env.example                 # Beispiel-Konfiguration
-├── SETUP.md                     # Ausführliche Anleitung
-├── README.md                    # Diese Datei
-└── homepage-data/
-    ├── app.py                   # Flask-Anwendung
-    ├── Dockerfile.homepage      # Docker-Image
-    ├── requirements.txt         # Python-Dependencies
-    └── templates/               # HTML-Templates
-```
-
----
-
-## 🔒 Sicherheit
-
-- ✅ Alle Daten nur auf dem Server
-- ✅ SSH-Key-Authentifizierung
-- ✅ Admin-Passwörter nur auf Server
-- ❌ Keine lokale Datenspeicherung
-- ❌ Keine Passwörter in Git
-
----
-
-## 📚 Dokumentation
-
-- **Setup-Anleitung:** [SETUP.md](SETUP.md)
-- **Server-Konfiguration:** Siehe SETUP.md Abschnitt 2
-
----
-
-## ⚙️ Konfiguration
-
-Bearbeiten Sie `.env` für:
-
-```env
-# Server-Adresse
-SSH_REMOTE_HOST=100.66.170.64
-```
-
----
-
-## 🆘 Support
-
-Bei Problemen:
-
-1. Prüfen Sie die Logs: `.\start.ps1 logs`
-2. Status prüfen: `.\start.ps1 status`
-3. Automatische Reparatur: `.\start.ps1 fix`
-4. Siehe [SETUP.md](SETUP.md) für Details
-
----
-
-**Version:** 2.0 (Server-basiert)  
-**Datum:** März 2026
-=======
-
-# Test SSH-Verbindung
-ssh dataserver@100.66.170.64 "ls -la /srv/schuler-daten"
-```
-
-### 5. Docker-Container starten (Lokal)
-
-```powershell
-# Container bauen und starten
-docker-compose up --build -d
-
-# Logs anzeigen
-docker-compose logs -f
-
-# Status prüfen
-docker-compose ps
-```
-
-### 6. Zugriff auf die Webseite
-
-- URL: http://localhost:3000
-- Registrierung: Nur mit Admin-Credentials möglich
-- Login: Nach erfolgreicher Registrierung
-
-### 7. Ordnerstruktur
-
-**Lokal (auf Ihrem Computer):**
-```
-d:\Neuer Ordner\
-├── docker-compose.yml
-├── admin_credentials.yml.example  (NUR Beispiel, nicht verwendet)
-├── SETUP.md
-└── homepage-data/
-    ├── app_new_ssh.py            (wird zu app.py im Container)
-    ├── Dockerfile.homepage
-    ├── requirements.txt
-    └── templates/
-        ├── base_new.html
-        ├── login_new.html
-        ├── register_new.html
-        └── user_dashboard_new.html
-```
-
-**Auf dem SSH-Server (192.168.178.1):**
-```
-/srv/schuler-daten/
-├── admin_credentials.yml    (Admin-Zugangsdaten)
-└── users.json              (Wird automatisch erstellt)
-```
-
-### 8. Passwort-Hash generieren (für sichere Admin-Credentials)
-
-Für maximale Sicherheit sollten Sie Passwort-Hashes verwenden:
-
-```python
-python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash(input('Passwort: ')))"
-```
-
-Dann in `admin_credentials.yml`:
-```yaml
-admins:
-  - username: "admin"
-    password_hash: "scrypt:32768:8:1$abc123..."  # Ihr generierter Hash
-```
-
-### 9. Troubleshooting
-
-**Container startet nicht:**
-```powershell
-docker-compose logs homepage
-```
-
-**SSH-Verbindung fehlgeschlagen:**
-```powershell
-# Teste SSH manuell
-ssh dataserver@100.66.170.64
-
-# Prüfe SSH-Key
-dir $env:USERPROFILE\.ssh\id_rsa
-```
-
-**Admin-Credentials funktionieren nicht:**
-- Prüfen Sie die Datei auf dem Server: `ssh dataserver@192.168.178.1 "cat /srv/schuler-daten/admin_credentials.yml"`
-- Prüfen Sie YAML-Syntax (keine Tabs, korrekte Einrückung)
-
-**Users werden nicht gespeichert:**
-- Prüfen Sie Schreibrechte: `ssh dataserver@192.168.178.1 "ls -la /srv/schuler-daten"`
-- Sollte: `drwxr-xr-x dataserver dataserver`
-
-### 10. Sicherheitshinweise
-
-✅ **Empfohlen:**
-- Verwenden Sie SSH-Key-Authentifizierung (keine Passwörter)
-- Verwenden Sie Passwort-Hashes in admin_credentials.yml
-- Setzen Sie `chmod 600` auf sensible Dateien auf dem Server
-- Ändern Sie SECRET_KEY in .env
-
-❌ **Vermeiden:**
-- Klartext-Passwörter in admin_credentials.yml (nur für Tests)
-- Admin-Credentials in Git einchecken
-- Default-SECRET_KEY in Produktion
-
-### 11. Wichtige Änderungen gegenüber vorher
-
-**ENTFERNT:**
-- ❌ Lokaler `./Daten` Ordner
-- ❌ Docker-Socket Volume
-- ❌ VM/Container-Management
-- ❌ Backup-System
-- ❌ MariaDB-Datenbank
-
-**NEU:**
-- ✅ Alles wird per SSH auf Server gespeichert
-- ✅ Admin-geschützte Registrierung
-- ✅ Einfaches Login-System
-- ✅ Keine lokalen Daten mehr
-
-### Support
-
-Bei Problemen prüfen Sie:
-1. Docker-Logs: `docker-compose logs -f`
-2. SSH-Verbindung: `ssh dataserver@192.168.178.1`
-3. Server-Dateien: `ssh dataserver@192.168.178.1 "ls -la /srv/schuler-daten"`
->>>>>>> 919387af8e60d736714c6b8f6bc4516becd1493a
+Dieses Projekt ist für persönliche und Bildungszwecke.
