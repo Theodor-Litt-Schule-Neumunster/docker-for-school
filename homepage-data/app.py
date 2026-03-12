@@ -1,39 +1,24 @@
 #!/usr/bin/env python3
-"""
-DockerLab - Container Management System
-Lokale Speicherung mit optionaler Nextcloud-Synchronisation
-"""
-
 import os
 import docker
 import requests
 import shutil
 from requests.auth import HTTPBasicAuth
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, Response, stream_with_context
-
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dockerlab-secret-key')
-
-# Lokaler Speicher
 DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
 LOGS_PATH = os.path.join(DATA_PATH, 'logs')
-
-# Nextcloud Konfiguration (optional für Sync)
 NEXTCLOUD_URL = os.getenv('NEXTCLOUD_URL', '')
 NEXTCLOUD_USERNAME = os.getenv('NEXTCLOUD_USERNAME', '')
 NEXTCLOUD_PASSWORD = os.getenv('NEXTCLOUD_PASSWORD', '')
 NEXTCLOUD_PATH = os.getenv('NEXTCLOUD_PATH', '/DockerLab')
-
-# Docker Client
 try:
     docker_client = docker.from_env()
 except Exception as e:
     print(f"WARNUNG: Docker-Client konnte nicht initialisiert werden: {e}")
     docker_client = None
-
-# Cache für den Host-Pfad von /data
 _host_data_path_cache = None
-
 def get_host_data_path():
     """Ermittelt den echten Host-Pfad von /data durch Selbstinspektion des eigenen Containers.
     Das ist nötig, weil der Docker-Daemon Host-Pfade braucht, keine Container-Pfade."""
@@ -50,36 +35,24 @@ def get_host_data_path():
                 return host_path
     except Exception as e:
         print(f"Warnung: Host-Pfad konnte nicht per Selbstinspektion ermittelt werden: {e}")
-    # Fallback: Container-Pfad verwenden (funktioniert nur bei Linux-Hosts ohne Namespace-Trennung)
     print(f"Fallback: Verwende Container-Pfad {DATA_PATH} als Host-Pfad")
     return DATA_PATH
-
-
-# ============================================================================
-# Nextcloud WebDAV Synchronisation
-# ============================================================================
-
 def get_webdav_auth():
     """Gibt WebDAV Auth-Objekt zurück"""
     if not NEXTCLOUD_USERNAME or not NEXTCLOUD_PASSWORD:
         return None
     return HTTPBasicAuth(NEXTCLOUD_USERNAME, NEXTCLOUD_PASSWORD)
-
-
 def sync_to_nextcloud():
     """Synchronisiert lokale Daten mit Nextcloud"""
     if not NEXTCLOUD_URL or not NEXTCLOUD_USERNAME or not NEXTCLOUD_PASSWORD:
         return {'success': False, 'error': 'Nextcloud nicht konfiguriert'}
     
     try:
-        # WebDAV URL konstruieren
         webdav_url = f"{NEXTCLOUD_URL}/remote.php/dav/files/{NEXTCLOUD_USERNAME}{NEXTCLOUD_PATH}/containers.json"
         
-        # Lese lokale Daten
         with open(CONTAINERS_FILE, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Hochladen zu Nextcloud
         response = requests.put(
             webdav_url,
             data=content.encode('utf-8'),
@@ -94,8 +67,6 @@ def sync_to_nextcloud():
             
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
 def sync_from_nextcloud():
     """Lädt Daten von Nextcloud herunter"""
     if not NEXTCLOUD_URL or not NEXTCLOUD_USERNAME or not NEXTCLOUD_PASSWORD:
@@ -122,12 +93,6 @@ def sync_from_nextcloud():
             
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
-# ============================================================================
-# Docker Container Management
-# ============================================================================
-
 def save_container_logs(container):
     """Speichert die letzten Logs eines Containers in /data/logs/{name}.log"""
     try:
@@ -139,8 +104,6 @@ def save_container_logs(container):
         print(f"Logs gespeichert: {log_file}")
     except Exception as e:
         print(f"Warnung: Logs konnten nicht gespeichert werden: {e}")
-
-
 def get_all_containers():
     """Gibt alle Docker-Container zurück (außer dockerlab-homepage selbst)"""
     if not docker_client:
@@ -151,7 +114,6 @@ def get_all_containers():
         container_list = []
         
         for container in containers:
-            # Überspringe den dockerlab-homepage Container selbst
             if container.name == 'dockerlab-homepage':
                 continue
                 
@@ -169,8 +131,6 @@ def get_all_containers():
     except Exception as e:
         print(f"Fehler beim Abrufen der Container: {e}")
         return []
-
-
 def start_container(container_name):
     """Startet einen Container"""
     if not docker_client:
@@ -183,8 +143,6 @@ def start_container(container_name):
         return {'success': True, 'message': f'Container {container_name} gestartet'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
 def stop_container(container_name):
     """Stoppt einen Container"""
     if not docker_client:
@@ -197,8 +155,6 @@ def stop_container(container_name):
         return {'success': True, 'message': f'Container {container_name} gestoppt'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
 def restart_container(container_name):
     """Startet einen Container neu"""
     if not docker_client:
@@ -210,8 +166,6 @@ def restart_container(container_name):
         return {'success': True, 'message': f'Container {container_name} neu gestartet'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
 def delete_container(container_name):
     """Löscht einen Container und seine Daten"""
     if not docker_client:
@@ -223,7 +177,6 @@ def delete_container(container_name):
         container.stop()
         container.remove()
         
-        # Lösche Container-Daten-Verzeichnis
         container_data_path = os.path.join(DATA_PATH, 'containers', container_name)
         if os.path.exists(container_data_path):
             try:
@@ -235,24 +188,19 @@ def delete_container(container_name):
         return {'success': True, 'message': f'Container {container_name} und Daten gelöscht'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
 def create_container(name, image, ports=None, environment=None):
     """Erstellt einen neuen Container mit persistenten Daten in ./data/containers/{name}/"""
     if not docker_client:
         return {'success': False, 'error': 'Docker-Client nicht verfügbar'}
     
     try:
-        # Erstelle Container-spezifisches Daten-Verzeichnis (innerhalb des Flask-Containers)
         container_data_path = os.path.join(DATA_PATH, 'containers', name)
         os.makedirs(container_data_path, exist_ok=True)
         print(f"Container-Daten-Verzeichnis erstellt: {container_data_path}")
         
-        # Echter Host-Pfad für das Volume-Mapping (Docker-Daemon braucht Host-Pfade!)
         host_data_root = get_host_data_path()
         host_container_data_path = os.path.join(host_data_root, 'containers', name)
         
-        # Parse Ports (z.B. "8080:80")
         port_bindings = {}
         if ports:
             for port_mapping in ports.split(','):
@@ -260,7 +208,6 @@ def create_container(name, image, ports=None, environment=None):
                     host_port, container_port = port_mapping.strip().split(':')
                     port_bindings[f'{container_port}/tcp'] = int(host_port)
         
-        # Parse Environment Variables
         env_dict = {}
         if environment:
             for env_var in environment.split(','):
@@ -268,18 +215,12 @@ def create_container(name, image, ports=None, environment=None):
                     key, value = env_var.strip().split('=', 1)
                     env_dict[key] = value
         
-        # Prüfe ob es ein VM-Container ist (benötigt privileged mode)
         is_vm_container = 'dockurr' in image.lower() or 'qemu' in image.lower()
-
-        # VM-Container speichern ihr Disk-Image unter /storage, alle anderen unter /data
         bind_path = '/storage' if is_vm_container else '/data'
-
-        # Volume-Mapping mit echtem Host-Pfad
         volumes = {
             host_container_data_path: {'bind': bind_path, 'mode': 'rw'}
         }
         
-        # Container erstellen
         container = docker_client.containers.run(
             image,
             name=name,
@@ -293,12 +234,6 @@ def create_container(name, image, ports=None, environment=None):
         return {'success': True, 'message': f'Container {name} erstellt und gestartet'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
-
-
-# ============================================================================
-# Flask Routes
-# ============================================================================
-
 @app.route('/')
 def index():
     """Hauptseite mit Container-Übersicht"""
@@ -308,8 +243,6 @@ def index():
     return render_template('main.html',
                           containers=containers,
                           nextcloud_configured=nextcloud_configured)
-
-
 def format_ports(raw_ports):
     """Formatiert Docker-Port-Dict in lesbaren String"""
     if not raw_ports:
@@ -322,8 +255,6 @@ def format_ports(raw_ports):
         else:
             parts.append(container_port)
     return ', '.join(parts)
-
-
 @app.route('/api/containers')
 def api_containers():
     """API Endpoint für Container-Liste (gibt Array zurück)"""
@@ -341,8 +272,6 @@ def api_containers():
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 @app.route('/api/containers/create', methods=['POST'])
 def api_containers_create():
     """API Endpoint zum Erstellen eines Containers"""
@@ -351,16 +280,12 @@ def api_containers_create():
     image = data.get('image', '').strip()
     ports = data.get('ports', '')
     environment = data.get('environment', '')
-
     if not name or not image:
         return jsonify({'error': 'Name und Image erforderlich'}), 400
-
     result = create_container(name, image, ports, environment)
     if result.get('success'):
         return jsonify(result)
     return jsonify({'error': result.get('error', 'Unbekannter Fehler')}), 500
-
-
 @app.route('/api/containers/<container_id>/<action>', methods=['POST'])
 def api_containers_action(container_id, action):
     """API Endpoint für Container-Aktionen (start/stop/restart/delete)"""
@@ -374,12 +299,9 @@ def api_containers_action(container_id, action):
         result = delete_container(container_id)
     else:
         return jsonify({'error': 'Unbekannte Aktion'}), 400
-
     if result.get('success'):
         return jsonify(result)
     return jsonify({'error': result.get('error', 'Unbekannter Fehler')}), 500
-
-
 @app.route('/api/containers/<container_id>/logs')
 def api_container_logs(container_id):
     """Streamt Logs eines Containers via Server-Sent Events in Echtzeit"""
@@ -389,16 +311,13 @@ def api_container_logs(container_id):
         container = docker_client.containers.get(container_id)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
     def generate():
-        # Zuerst die letzten 200 Zeilen als Verlauf senden
         try:
             history = container.logs(tail=200, timestamps=True).decode('utf-8', errors='replace')
             for line in history.splitlines():
                 yield f"data: {line}\n\n"
         except Exception:
             pass
-        # Dann live weiterstreamen
         try:
             for chunk in container.logs(stream=True, follow=True, timestamps=True):
                 line = chunk.decode('utf-8', errors='replace').rstrip('\n')
@@ -406,11 +325,8 @@ def api_container_logs(container_id):
                     yield f"data: {line}\n\n"
         except Exception as e:
             yield f"data: [Stream beendet: {e}]\n\n"
-
     return Response(stream_with_context(generate()), mimetype='text/event-stream',
                     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
-
-
 @app.route('/api/nextcloud/sync-to', methods=['POST'])
 def api_nextcloud_sync_to():
     """API Endpoint zum Upload zu Nextcloud"""
@@ -418,8 +334,6 @@ def api_nextcloud_sync_to():
     if result.get('success'):
         return jsonify(result)
     return jsonify({'error': result.get('error', 'Synchronisierung fehlgeschlagen')}), 500
-
-
 @app.route('/api/nextcloud/sync-from', methods=['POST'])
 def api_nextcloud_sync_from():
     """API Endpoint zum Download von Nextcloud"""
@@ -427,24 +341,16 @@ def api_nextcloud_sync_from():
     if result.get('success'):
         return jsonify(result)
     return jsonify({'error': result.get('error', 'Synchronisierung fehlgeschlagen')}), 500
-
-
-# ============================================================================
-# Startup
-# ============================================================================
-
 if __name__ == '__main__':
     print("=" * 70)
     print("DockerLab - Container Management System")
     print("=" * 70)
     
-    # Docker-Status
     if docker_client:
         print(f"✓ Docker verbunden")
     else:
         print(f"✗ Docker nicht verfügbar")
     
-    # Nextcloud-Status
     if NEXTCLOUD_URL and NEXTCLOUD_USERNAME and NEXTCLOUD_PASSWORD:
         print(f"✓ Nextcloud konfiguriert: {NEXTCLOUD_URL}")
     else:

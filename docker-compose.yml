@@ -7,15 +7,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Docker-Socket für Container-Verwaltung
       - /var/run/docker.sock:/var/run/docker.sock
-      # Lokales Daten-Verzeichnis
       - ./data:/data
     restart: unless-stopped
     environment:
       - SECRET_KEY=${SECRET_KEY:-dockerlab-secret-key}
       - PYTHONUNBUFFERED=1
-      # Nextcloud-Konfiguration (optional)
       - NEXTCLOUD_URL=${NEXTCLOUD_URL:-}
       - NEXTCLOUD_USERNAME=${NEXTCLOUD_USERNAME:-}
       - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD:-}

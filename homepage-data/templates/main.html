@@ -458,7 +458,6 @@
                         ? `<a class="btn btn-sm" href="http://localhost:${vncPort}" target="_blank" style="background:#7c3aed;color:white;">VNC öffnen</a>`
                         : '';
 
-                    // Web-Button für nicht-VM Container mit gemapptem Port
                     let webBtn = '';
                     if (!isVm && container.status === 'running' && container.ports) {
                         const webMatch = container.ports.match(/(\d+):/);
@@ -586,7 +585,6 @@
         let _logsEventSource = null;
 
         async function showLogs(containerId, containerName) {
-            // Alten Stream schließen falls noch offen
             if (_logsEventSource) { _logsEventSource.close(); _logsEventSource = null; }
 
             const modal = document.getElementById('logs-modal');
@@ -635,18 +633,5 @@
             <pre id="logs-content" style="background:#0a0d14; color:#a8b8d0; padding:16px; border-radius:8px; overflow:auto; flex:1; font-size:12px; white-space:pre-wrap; word-break:break-all; margin:0;"></pre>
         </div>
     </div>
-</body>
-</html>
-                } else {
-                    throw new Error(result.error || 'Synchronisierung fehlgeschlagen');
-                }
-            } catch (error) {
-                showAlert(`Fehler: ${error.message}`, 'error');
-            } finally {
-                hideLoading('sync-from-icon', 'Von Nextcloud herunterladen');
-                setTimeout(refreshContainers, 500);
-            }
-        }
-    </script>
 </body>
 </html>
