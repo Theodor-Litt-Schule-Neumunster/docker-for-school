@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\$daemonConfig = @\\{\n    \"ipv6\" = \\$false\n    \"fixed-cidr-v6\" = \\$null\n\\} \\| ConvertTo-Json\n\n# Verzeichnis erstellen falls nötig\nNew-Item -ItemType Directory -Force -Path \"\\$env:APPDATA\\\\Docker\" \\| Out-Null\n\n\\$daemonConfig \\| Set-Content -Path \"\\$env:APPDATA\\\\Docker\\\\daemon\\.json\" -Encoding UTF8\nWrite-Host \"daemon\\.json erstellt:\"\nGet-Content \"\\$env:APPDATA\\\\Docker\\\\daemon\\.json\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

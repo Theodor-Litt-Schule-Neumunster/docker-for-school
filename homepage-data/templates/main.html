@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DockerLab - Container Verwaltung</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="alternate icon" href="/static/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -63,12 +65,93 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1.5rem;
+            position: relative;
+            overflow: hidden;
         }
-        
-        .header h1 {
-            color: var(--accent-primary);
-            font-size: 1.75rem;
+
+        .header::before {
+            content: '';
+            position: absolute;
+            inset: auto auto -70px -70px;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(74, 144, 226, 0.22) 0%, rgba(74, 144, 226, 0) 70%);
+            pointer-events: none;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+            background: linear-gradient(145deg, rgba(36, 150, 237, 0.2), rgba(80, 227, 194, 0.12));
+            border: 1px solid rgba(74, 144, 226, 0.35);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 14px 28px rgba(0, 0, 0, 0.28);
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+        }
+
+        .brand-copy {
+            min-width: 0;
+        }
+
+        .brand-kicker {
+            display: inline-block;
+            font-size: 0.72rem;
             font-weight: 700;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--accent-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .brand-title {
+            display: flex;
+            align-items: baseline;
+            gap: 0.18rem;
+            font-size: clamp(1.9rem, 3vw, 2.8rem);
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -0.05em;
+            text-transform: none;
+        }
+
+        .brand-title-docker {
+            color: #f8fbff;
+            text-shadow: 0 0 24px rgba(74, 144, 226, 0.2);
+        }
+
+        .brand-title-lab {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .brand-subtitle {
+            margin-top: 0.38rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+        }
+
+        .sync-buttons {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 0.75rem;
         }
         
         .btn {
@@ -113,6 +196,30 @@
         .btn-info {
             background: #4299E1;
             color: white;
+        }
+
+        .field-help {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .field-help-text {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .docker-hub-link {
+            background: linear-gradient(135deg, #ff8a3d, #ff6b2c);
+            color: #fff7f0;
+            border: 1px solid rgba(255, 173, 112, 0.35);
+            box-shadow: 0 10px 24px rgba(255, 107, 44, 0.2);
+        }
+
+        .docker-hub-link:hover {
+            box-shadow: 0 14px 30px rgba(255, 107, 44, 0.28);
         }
         
         .content-grid {
@@ -318,8 +425,34 @@
             .content-grid {
                 grid-template-columns: 1fr;
             }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .sync-buttons {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
             body {
                 padding: 1rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .brand {
+                align-items: flex-start;
+            }
+
+            .brand-mark {
+                width: 50px;
+                height: 50px;
+            }
+
+            .brand-subtitle {
+                font-size: 0.88rem;
             }
         }
         
@@ -341,7 +474,26 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>DockerLab</h1>
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">
+                    <svg width="34" height="34" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="9" y="31" width="10" height="8" rx="2" fill="#2496ED"/>
+                        <rect x="22" y="31" width="10" height="8" rx="2" fill="#2496ED"/>
+                        <rect x="35" y="31" width="10" height="8" rx="2" fill="#2496ED"/>
+                        <rect x="22" y="21" width="10" height="8" rx="2" fill="#2496ED"/>
+                        <rect x="35" y="21" width="10" height="8" rx="2" fill="#2496ED"/>
+                        <path d="M15 43H41C48.1797 43 54 37.1797 54 30V29.5C51.9518 31.8324 48.9494 33.5 45.5 33.5H15V43Z" fill="#50E3C2" opacity="0.9"/>
+                        <path d="M47 24C49.8 23.1 52.1 21.3 53.8 18.8" stroke="#50E3C2" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="brand-copy">
+                    <span class="brand-kicker">Container Control Center</span>
+                    <div class="brand-title" aria-label="DockerLab">
+                        <span class="brand-title-docker">Docker</span><span class="brand-title-lab">Lab</span>
+                    </div>
+                    <div class="brand-subtitle">Lokale Container, Logs und Schnellstarts in einem Dashboard.</div>
+                </div>
+            </div>
             <div class="sync-buttons">
                 <button class="btn btn-success" onclick="syncToNextcloud()">
                     <span id="sync-to-icon">Zu Nextcloud hochladen</span>
@@ -376,7 +528,10 @@
                         <div class="form-group">
                             <label for="image-name">Docker Image</label>
                             <input type="text" id="image-name" name="image" required>
-                            <small>z.B. 'ubuntu:latest' oder 'nginx'. Mehr auf <a href="https://hub.docker.com/" target="_blank">Docker Hub</a>.</small>
+                            <div class="field-help">
+                                <small class="field-help-text">z.B. 'ubuntu:latest' oder 'nginx'.</small>
+                                <a class="btn btn-sm docker-hub-link" href="https://hub.docker.com/" target="_blank" rel="noopener noreferrer">Zu Docker Hub</a>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="ports">Port-Zuweisungen (optional)</label>
@@ -396,9 +551,9 @@
                         <button class="btn btn-info" onclick="createQuickContainer('dockurr/windows', 'windows-vm', '3010:8006', 'VERSION=2022')">Windows Server 2022</button>
                         <button class="btn btn-info" onclick="createQuickContainer('qemux/qemu', 'debian-vm', '3011:8006')">Debian VM</button>
                         <button class="btn btn-info" onclick="createQuickContainer('nginx', 'my-nginx-server', '8080:80')">Nginx Web Server</button>
-                        <button class="btn btn-info" onclick="createQuickContainer('codercom/code-server', 'vscode', '8443:8443', 'PASSWORD=vscode')">VS Code (code-server)</button>
-                        <button class="btn btn-info" onclick="createQuickContainer('postgres:14-alpine', 'postgres-db', '5432:5432', 'POSTGRES_PASSWORD=postgres,POSTGRES_USER=postgres,POSTGRES_DB=mydb')">PostgreSQL 14</button>
-                        <button class="btn btn-info" onclick="createQuickContainer('dpage/pgadmin4', 'pgadmin', '5050:80', 'PGADMIN_DEFAULT_EMAIL=admin@admin.com,PGADMIN_DEFAULT_PASSWORD=admin')">pgAdmin (DB-Weboberfläche)</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('codercom/code-server', 'vscode', '8443:8080', 'AUTH=none')">VS Code</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('mariadb:11', 'mariadb-db', '3306:3306', 'MARIADB_ROOT_PASSWORD=mariadbroot,MARIADB_DATABASE=mydb,MARIADB_USER=mariadb,MARIADB_PASSWORD=mariadb')">MariaDB 11</button>
+                        <button class="btn btn-info" onclick="createQuickContainer('phpmyadmin:latest', 'phpmyadmin', '5050:80', 'PMA_HOST=mariadb-db,PMA_PORT=3306')">phpMyAdmin</button>
                     </div>
                 </div>
             </div>

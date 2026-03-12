@@ -193,10 +193,55 @@ def delete_container(container_name):
         return {'success': True, 'message': f'Container {container_name} und Daten gelöscht'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+def format_docker_error(error):
+    """Macht häufige Docker-Fehler für die UI verständlicher."""
+    message = str(error)
+    lower_message = message.lower()
+
+    if 'registry-1.docker.io' in lower_message:
+        if 'no such host' in lower_message or 'temporary failure in name resolution' in lower_message:
+            return (
+                'Docker Desktop kann Docker Hub aktuell nicht per DNS erreichen '
+                '(registry-1.docker.io). Das ist ein Netzwerkproblem auf Host- oder '
+                'Docker-Desktop-Ebene. Prüfen Sie Internetverbindung, DNS/Proxy in '
+                'Docker Desktop und testen Sie danach `docker pull nginx:latest` im Terminal erneut.'
+            )
+        if 'proxy' in lower_message:
+            return (
+                'Docker Desktop erreicht Docker Hub wegen einer Proxy-Konfiguration nicht. '
+                'Prüfen Sie in Docker Desktop unter Settings > Resources > Proxies die HTTP/HTTPS-Proxy-Werte '
+                'und testen Sie anschließend `docker pull nginx:latest` erneut.'
+            )
+
+    return message
+
 def create_container(name, image, ports=None, environment=None):
     """Erstellt einen neuen Container mit persistenten Daten in ./data/containers/{name}/"""
     if not docker_client:
         return {'success': False, 'error': 'Docker-Client nicht verfügbar'}
+    
+    # Prüfen, ob bereits ein Container mit dem gleichen Image existiert
+    try:
+        existing_containers = docker_client.containers.list(all=True)
+        # Normalisiere das Input-Image
+        normalized_input = image if ':' in image else f"{image}:latest"
+        
+        for container in existing_containers:
+            if container.name == 'dockerlab-homepage':
+                continue
+            
+            # Alle Tags des Container-Images prüfen
+            container_tags = container.image.tags if container.image.tags else []
+            
+            for tag in container_tags:
+                if tag == normalized_input or tag == image:
+                    return {
+                        'success': False, 
+                        'error': f'Dieser Container existiert bereits! Ein Container mit dem Image "{tag}" läuft bereits unter dem Namen "{container.name}".'
+                    }
+    except Exception as e:
+        print(f"Warnung bei Container-Prüfung: {e}")
     
     try:
         container_data_path = os.path.join(DATA_PATH, 'containers', name)
@@ -221,10 +266,19 @@ def create_container(name, image, ports=None, environment=None):
                     env_dict[key] = value
         
         is_vm_container = 'dockurr' in image.lower() or 'qemu' in image.lower()
-        bind_path = '/storage' if is_vm_container else '/data'
+        is_code_server = 'codercom/code-server' in image.lower()
+        if is_vm_container:
+            bind_path = '/storage'
+        elif is_code_server:
+            bind_path = '/home/coder/project'
+        else:
+            bind_path = '/data'
         volumes = {
             host_container_data_path: {'bind': bind_path, 'mode': 'rw'}
         }
+
+        container_command = ['--auth', 'none', '/home/coder/project'] if is_code_server else None
+        working_dir = '/home/coder/project' if is_code_server else None
         
         container = docker_client.containers.run(
             image,
@@ -232,13 +286,15 @@ def create_container(name, image, ports=None, environment=None):
             ports=port_bindings if port_bindings else None,
             environment=env_dict if env_dict else None,
             volumes=volumes,
+            command=container_command,
+            working_dir=working_dir,
             privileged=is_vm_container,
             detach=True
         )
         
         return {'success': True, 'message': f'Container {name} erstellt und gestartet'}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': format_docker_error(e)}
 @app.route('/')
 def index():
     """Hauptseite mit Container-Übersicht"""

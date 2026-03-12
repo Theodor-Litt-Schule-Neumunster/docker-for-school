@@ -1,0 +1,22 @@
+[
+  {
+    "id": "f1f758319440",
+    "name": "vscode",
+    "image": "codercom/code-server:latest",
+    "status": "running",
+    "state": "running",
+    "created": "2026-03-12T19:30:07.06101928Z",
+    "ports": {
+      "8080/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "8443"
+        },
+        {
+          "HostIp": "::",
+          "HostPort": "8443"
+        }
+      ]
+    }
+  }
+]
