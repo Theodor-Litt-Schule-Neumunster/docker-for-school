@@ -3,7 +3,7 @@ services:
     build:
       context: ./homepage-data
       dockerfile: Dockerfile.homepage
-    container_name: theodor-litt-homepage
+    container_name: dockerlab-homepage
     ports:
       - "3000:3000"
     volumes:
@@ -15,9 +15,9 @@ services:
       - ./vm-data:/vm-data
     restart: unless-stopped
     environment:
-      - SECRET_KEY=${SECRET_KEY:-theodor-litt-secret-change-in-production}
+      - SECRET_KEY=${SECRET_KEY:-change-in-production}
       - PYTHONUNBUFFERED=1
-      - SSH_REMOTE_HOST=${SSH_REMOTE_HOST:-100.66.170.64}
+      - SSH_REMOTE_HOST=${SSH_REMOTE_HOST:-192.168.178.1}
       - SSH_REMOTE_USER=${SSH_REMOTE_USER:-dataserver}
       - SSH_REMOTE_PATH=${SSH_REMOTE_PATH:-/srv/schuler-daten}
     healthcheck:
