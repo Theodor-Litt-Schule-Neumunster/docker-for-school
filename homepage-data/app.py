@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Theodor Litt - VM Management System mit SSH-Steuerung
-Windows Server 2022, Debian VMs, VS Code Server, Backups
+DockerLab - VM Management System mit SSH-Steuerung
+Windows Server 2022, Debian VMs, VS Code Server
 Admin-Panel für User-Verwaltung
 """
 
@@ -9,6 +9,9 @@ import os
 import json
 import yaml
 import re
+import subprocess
+import shutil
+import tarfile
 from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
@@ -21,15 +24,17 @@ app.secret_key = os.getenv('SECRET_KEY', 'theodor-litt-secret-key-change-in-prod
 
 # SSH Konfiguration aus Umgebungsvariablen
 SSH_HOST = os.getenv('SSH_REMOTE_HOST', '100.66.170.64')
+SSH_REMOTE_HOST = SSH_HOST  # Alias für Kompatibilität
 SSH_USER = os.getenv('SSH_REMOTE_USER', 'dataserver')
 SSH_PATH = os.getenv('SSH_REMOTE_PATH', '/srv/schuler-daten')
 SSH_KEY_PATH = os.path.expanduser('~/.ssh/id_rsa')
 
-# Pfade auf Remote-Server
+# Pfade auf Remote-Server (nur für User-Verwaltung)
 REMOTE_USERS_FILE = f"{SSH_PATH}/users.json"
 REMOTE_ADMIN_CREDENTIALS = f"{SSH_PATH}/admin_credentials.yml"
-REMOTE_VMS_PATH = f"{SSH_PATH}/vms"
-REMOTE_BACKUPS_PATH = "/srv/backups"
+
+# Lokale Pfade für VMs (laufen auf diesem PC)
+LOCAL_VMS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'vm-data'))
 
 # VNC Port-Mapping (10 gleichzeitige User)
 VNC_PORT_START = 5900
@@ -158,8 +163,10 @@ def write_remote_file(filepath, content):
 
 def execute_ssh_command(command, return_output=True):
     """Führt SSH-Befehl aus und gibt Ergebnis zurück"""
+    print(f"[SSH] Führe Befehl aus: {command[:100]}...")  # Debug-Log
     ssh = get_ssh_client()
     if not ssh:
+        print("[SSH] Fehler: Keine SSH-Verbindung!")
         return None if return_output else False
     
     try:
@@ -169,6 +176,13 @@ def execute_ssh_command(command, return_output=True):
         if return_output:
             output = stdout.read().decode('utf-8').strip()
             error = stderr.read().decode('utf-8').strip()
+            
+            # Debug-Ausgabe
+            if exit_status == 0:
+                print(f"[SSH] ✓ Erfolg! Output: {output[:200]}")
+            else:
+                print(f"[SSH] ✗ Fehler (Exit {exit_status})! Error: {error[:200]}")
+            
             ssh.close()
             return {'success': exit_status == 0, 'output': output, 'error': error}
         else:
@@ -257,10 +271,12 @@ def get_user_port(username):
 
 
 # ============================================================================
-# VM-Management Klasse
+# VM-Management Klasse (Lokal)
 # ============================================================================
 
-class SSHVMManager:
+import subprocess
+
+class LocalVMManager:
     """Verwaltet VMs über SSH auf Remote-Server"""
     
     def __init__(self):
@@ -268,153 +284,247 @@ class SSHVMManager:
         self.ssh_user = SSH_USER
     
     def create_user_vms(self, username):
-        """Erstellt VM-Umgebung für neuen User"""
-        user_vm_path = f"{REMOTE_VMS_PATH}/{username}"
-        user_backup_path = f"{REMOTE_BACKUPS_PATH}/{username}"
+        """Erstellt VM-Umgebung für neuen User (lokal)"""
+        user_vm_path = os.path.join(LOCAL_VMS_PATH, username)
+        print(f"[VM] Erstelle lokales VM-Verzeichnis: {user_vm_path}")
         
-        commands = [
-            f"mkdir -p {user_vm_path}",
-            f"mkdir -p {user_backup_path}",
-            f"mkdir -p {user_vm_path}/vscode-config",
-        ]
-        
-        for cmd in commands:
-            result = execute_ssh_command(cmd)
-            if not result or not result['success']:
-                return False
-        return True
+        try:
+            os.makedirs(os.path.join(user_vm_path, 'windows'), exist_ok=True)
+            os.makedirs(os.path.join(user_vm_path, 'debian'), exist_ok=True)
+            os.makedirs(os.path.join(user_vm_path, 'vscode-config'), exist_ok=True)
+            print(f"[VM] ✓ Verzeichnisse erstellt")
+            return True
+        except Exception as e:
+            print(f"[VM] ✗ Fehler beim Erstellen: {e}")
+            return False
     
     def start_windows_vm(self, username):
-        """Startet Windows Server 2022 VM über dockur/windows"""
+        """Startet Windows Server 2022 VM lokal über dockur/windows"""
+        print(f"[VM] Starte Windows VM für User: {username}")
         ports = get_user_port(username)
         if not ports:
+            print(f"[VM] ✗ Fehler: Keine Ports für User {username}")
             return {'success': False, 'error': 'Port-Zuweisung fehlgeschlagen'}
+        
+        print(f"[VM] Ports: VNC={ports['vnc']}, noVNC={ports['novnc']}")
         
         vm_name = f"{username}-windows"
-        vm_path = f"{REMOTE_VMS_PATH}/{username}"
+        vm_path = os.path.join(LOCAL_VMS_PATH, username, 'windows')
         
-        command = f"""docker run -d --name {vm_name} --device=/dev/kvm --cap-add NET_ADMIN -p {ports['novnc']}:8006 -p {ports['vnc']}:3389 -v {vm_path}/windows:/storage -e VERSION="win11" -e RAM_SIZE="4G" -e CPU_CORES="2" dockur/windows"""
+        print(f"[VM] Lokaler VM-Pfad: {vm_path}")
+        os.makedirs(vm_path, exist_ok=True)
         
-        result = execute_ssh_command(command)
-        return result
+        # Docker-Befehl als String zusammensetzen (funktioniert besser mit komplexen Parametern)
+        command = [
+            'docker', 'run', '-d',
+            '--name', vm_name,
+            '--privileged',
+            '-p', f"{ports['novnc']}:8006",
+            '-p', f"{ports['vnc']}:5900",
+            '-v', f"{os.path.abspath(vm_path)}:/storage",
+            '-e', 'VERSION=win2022',
+            '-e', 'RAM_SIZE=4G',
+            '-e', 'CPU_CORES=2',
+            '-e', 'DISK_SIZE=64G',
+            'dockurr/windows'
+        ]
+        
+        print(f"[VM] Führe Docker-Befehl lokal aus...")
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                print(f"[VM] ✓ Windows VM erfolgreich gestartet: {vm_name}")
+                print(f"[VM] Container-ID: {result.stdout.strip()[:12]}")
+                return {'success': True, 'output': result.stdout.strip()}
+            else:
+                print(f"[VM] ✗ Fehler: {result.stderr}")
+                return {'success': False, 'error': result.stderr}
+        except Exception as e:
+            print(f"[VM] ✗ Exception: {e}")
+            return {'success': False, 'error': str(e)}
     
     def start_debian_vm(self, username):
-        """Startet Debian VM über qemus/qemu"""
+        """Startet Debian VM lokal über qemus/qemu"""
+        print(f"[VM] Starte Debian VM für User: {username}")
         ports = get_user_port(username)
         if not ports:
+            print(f"[VM] ✗ Fehler: Keine Ports für User {username}")
             return {'success': False, 'error': 'Port-Zuweisung fehlgeschlagen'}
         
+        print(f"[VM] Ports: VNC={ports['vnc']}, noVNC={ports['novnc']+10}")
+        
         vm_name = f"{username}-debian"
-        vm_path = f"{REMOTE_VMS_PATH}/{username}"
+        vm_path = os.path.join(LOCAL_VMS_PATH, username, 'debian')
         
-        command = f"""docker run -d --name {vm_name} --device=/dev/kvm -p {ports['novnc']+10}:8006 -v {vm_path}/debian:/storage -e VERSION="12" -e RAM_SIZE="2G" -e CPU_CORES="2" qemus/qemu"""
+        print(f"[VM] Lokaler VM-Pfad: {vm_path}")
+        os.makedirs(vm_path, exist_ok=True)
         
-        result = execute_ssh_command(command)
-        return result
+        command = [
+            'docker', 'run', '-d',
+            '--name', vm_name,
+            '--privileged',
+            '-p', f"{ports['novnc']+10}:8006",
+            '-v', f"{os.path.abspath(vm_path)}:/storage",
+            '-e', 'BOOT=debian',
+            '-e', 'RAM_SIZE=2G',
+            '-e', 'CPU_CORES=2',
+            '-e', 'DISK_SIZE=32G',
+            'qemux/qemu'
+        ]
+        
+        print(f"[VM] Führe Docker-Befehl lokal aus...")
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                print(f"[VM] ✓ Debian VM erfolgreich gestartet: {vm_name}")
+                print(f"[VM] Container-ID: {result.stdout.strip()[:12]}")
+                return {'success': True, 'output': result.stdout.strip()}
+            else:
+                print(f"[VM] ✗ Fehler: {result.stderr}")
+                return {'success': False, 'error': result.stderr}
+        except Exception as e:
+            print(f"[VM] ✗ Exception: {e}")
+            return {'success': False, 'error': str(e)}
     
     def stop_vm(self, username, vm_type):
-        """Stoppt VM und erstellt automatisch Backup"""
+        """Stoppt VM lokal"""
         vm_name = f"{username}-{vm_type}"
+        print(f"[VM] Stoppe {vm_type} VM: {vm_name}")
         
-        stop_result = execute_ssh_command(f"docker stop {vm_name}")
-        
-        if stop_result and stop_result['success']:
-            self.create_backup(username, vm_type)
-            execute_ssh_command(f"docker rm {vm_name}")
-            return {'success': True, 'message': 'VM gestoppt und Backup erstellt'}
-        
-        return {'success': False, 'error': 'VM konnte nicht gestoppt werden'}
+        try:
+            # Stoppe Container lokal
+            result = subprocess.run(['docker', 'stop', vm_name], capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                print(f"[VM] ✓ VM gestoppt")
+                # Container entfernen
+                subprocess.run(['docker', 'rm', vm_name], capture_output=True, text=True)
+                return {'success': True, 'message': 'VM gestoppt'}
+            else:
+                print(f"[VM] ✗ Fehler: {result.stderr}")
+                return {'success': False, 'error': result.stderr}
+        except Exception as e:
+            print(f"[VM] ✗ Exception: {e}")
+            return {'success': False, 'error': str(e)}
     
     def delete_vm(self, username, vm_type):
-        """Löscht VM"""
+        """Löscht VM lokal"""
         vm_name = f"{username}-{vm_type}"
-        vm_path = f"{REMOTE_VMS_PATH}/{username}/{vm_type}"
+        vm_path = os.path.join(LOCAL_VMS_PATH, username, vm_type)
+        print(f"[VM] Lösche {vm_type} VM: {vm_name}")
         
-        execute_ssh_command(f"docker stop {vm_name}")
-        execute_ssh_command(f"docker rm {vm_name}")
-        
-        result = execute_ssh_command(f"rm -rf {vm_path}")
-        return result
+        try:
+            # Stoppe und entferne Container
+            subprocess.run(['docker', 'stop', vm_name], capture_output=True, text=True)
+            subprocess.run(['docker', 'rm', vm_name], capture_output=True, text=True)
+            
+            # Lösche lokale Daten
+            import shutil
+            if os.path.exists(vm_path):
+                shutil.rmtree(vm_path)
+                print(f"[VM] ✓ VM-Daten gelöscht: {vm_path}")
+            
+            return {'success': True, 'message': 'VM gelöscht'}
+        except Exception as e:
+            print(f"[VM] ✗ Exception: {e}")
+            return {'success': False, 'error': str(e)}
     
     def get_vm_status(self, username):
-        """Gibt Status aller VMs zurück"""
+        """Gibt Status aller VMs zurück (lokal)"""
         status = {}
+        
+        # Ports für den User abrufen
+        ports = get_user_port(username)
         
         for vm_type in ['windows', 'debian', 'vscode']:
             vm_name = f"{username}-{vm_type}"
-            result = execute_ssh_command(f"docker ps -q -f name={vm_name}")
-            status[vm_type] = {
-                'running': bool(result and result['output']),
-                'name': vm_name
-            }
+            
+            try:
+                # Prüfe ob Container läuft
+                result_running = subprocess.run(
+                    ['docker', 'ps', '-q', '-f', f'name={vm_name}'],
+                    capture_output=True, text=True
+                )
+                is_running = bool(result_running.stdout.strip())
+                
+                # Prüfe ob Container existiert (auch gestoppt)
+                result_exists = subprocess.run(
+                    ['docker', 'ps', '-aq', '-f', f'name={vm_name}'],
+                    capture_output=True, text=True
+                )
+                is_created = bool(result_exists.stdout.strip())
+                
+                status[vm_type] = {
+                    'running': is_running,
+                    'created': is_created,
+                    'name': vm_name
+                }
+                
+                # Füge Ports hinzu
+                if ports:
+                    if vm_type == 'windows':
+                        status[vm_type]['vnc_port'] = ports['vnc']
+                        status[vm_type]['novnc_port'] = ports['novnc']
+                    elif vm_type == 'debian':
+                        status[vm_type]['vnc_port'] = ports['vnc']
+                        status[vm_type]['novnc_port'] = ports['novnc'] + 10
+                    elif vm_type == 'vscode':
+                        status[vm_type]['port'] = 8080 + ports['index']
+            
+            except Exception as e:
+                print(f"[VM] Fehler beim Status-Check für {vm_name}: {e}")
+                status[vm_type] = {'running': False, 'created': False, 'name': vm_name}
         
-        ports = get_user_port(username)
         if ports:
             status['ports'] = ports
         
         return status
     
     def start_vscode(self, username):
-        """Startet VS Code Server"""
+        """Startet VS Code Server lokal"""
         ports = get_user_port(username)
         if not ports:
             return {'success': False, 'error': 'Port-Zuweisung fehlgeschlagen'}
         
         vm_name = f"{username}-vscode"
-        vm_path = f"{REMOTE_VMS_PATH}/{username}/vscode-config"
+        vm_path = os.path.join(LOCAL_VMS_PATH, username, 'vscode-config')
         vscode_port = 8080 + ports['index']
         
-        command = f"""docker run -d --name {vm_name} -p {vscode_port}:8080 -v {vm_path}:/home/coder/project -e PASSWORD="{username}123" codercom/code-server:latest"""
+        print(f"[VM] Starte VS Code Server: {vm_name} auf Port {vscode_port}")
         
-        result = execute_ssh_command(command)
-        if result and result['success']:
-            result['port'] = vscode_port
-        return result
-    
-    def create_backup(self, username, vm_type=None):
-        """Erstellt Backup der VM-Daten"""
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        try:
+            # Erstelle Verzeichnis falls es nicht existiert
+            os.makedirs(vm_path, exist_ok=True)
+            
+            # Prüfe ob Container bereits läuft
+            result_check = subprocess.run(['docker', 'ps', '-q', '-f', f'name={vm_name}'], capture_output=True, text=True)
+            if result_check.stdout.strip():
+                print(f"[VM] Container läuft bereits: {vm_name}")
+                return {'success': True, 'message': 'VS Code Server läuft bereits', 'port': vscode_port}
+            
+            # Starte Container
+            result = subprocess.run([
+                'docker', 'run', '-d',
+                '--name', vm_name,
+                '-p', f'{vscode_port}:8080',
+                '-v', f'{os.path.abspath(vm_path)}:/home/coder/project',
+                '-e', f'PASSWORD={username}123',
+                'codercom/code-server:latest'
+            ], capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                print(f"[VM] ✓ VS Code Server gestartet")
+                return {'success': True, 'message': 'VS Code Server gestartet', 'port': vscode_port}
+            else:
+                print(f"[VM] ✗ Fehler: {result.stderr}")
+                return {'success': False, 'error': result.stderr}
         
-        if vm_type:
-            source_path = f"{REMOTE_VMS_PATH}/{username}/{vm_type}"
-            backup_file = f"{REMOTE_BACKUPS_PATH}/{username}/{timestamp}_{vm_type}_backup.tar.gz"
-        else:
-            source_path = f"{REMOTE_VMS_PATH}/{username}"
-            backup_file = f"{REMOTE_BACKUPS_PATH}/{username}/{timestamp}_full_backup.tar.gz"
-        
-        command = f"tar -czf {backup_file} -C {source_path} . 2>/dev/null || echo 'No data'"
-        result = execute_ssh_command(command)
-        
-        # Alte Backups löschen (älter als 7 Tage)
-        cleanup_cmd = f"find {REMOTE_BACKUPS_PATH}/{username}/ -name '*.tar.gz' -mtime +7 -delete"
-        execute_ssh_command(cleanup_cmd)
-        
-        return result
-    
-    def list_backups(self, username):
-        """Listet verfügbare Backups auf"""
-        command = f"ls -lh {REMOTE_BACKUPS_PATH}/{username}/*.tar.gz 2>/dev/null || echo ''"
-        result = execute_ssh_command(command)
-        
-        if not result or not result['output']:
-            return []
-        
-        backups = []
-        for line in result['output'].split('\n'):
-            if line and '.tar.gz' in line:
-                parts = line.split()
-                if len(parts) >= 9:
-                    backups.append({
-                        'size': parts[4],
-                        'date': f"{parts[5]} {parts[6]} {parts[7]}",
-                        'name': parts[8].split('/')[-1]
-                    })
-        
-        return backups
+        except Exception as e:
+            print(f"[VM] ✗ Exception: {e}")
+            return {'success': False, 'error': str(e)}
 
 
 # Globale VM Manager Instanz
-vm_manager = SSHVMManager()
+vm_manager = LocalVMManager()
 
 
 # ============================================================================
@@ -589,14 +699,10 @@ def dashboard():
     # VM-Status abrufen
     vm_status = vm_manager.get_vm_status(username)
     
-    # Backups abrufen
-    backups = vm_manager.list_backups(username)
-    
     return render_template('user_dashboard.html', 
                          username=username, 
                          user=user, 
                          vm_status=vm_status,
-                         backups=backups,
                          ssh_host=SSH_HOST)
 
 
@@ -642,7 +748,7 @@ def api_start_debian():
 @app.route('/api/vm/<vm_type>/stop', methods=['POST'])
 @login_required
 def api_stop_vm(vm_type):
-    """Stoppt VM und erstellt Backup"""
+    """Stoppt VM"""
     username = session.get('username')
     result = vm_manager.stop_vm(username, vm_type)
     return jsonify(result)
@@ -684,24 +790,6 @@ def api_stop_vscode():
     return jsonify(result)
 
 
-@app.route('/api/backup/create', methods=['POST'])
-@login_required
-def api_create_backup():
-    """Erstellt manuelles Backup"""
-    username = session.get('username')
-    result = vm_manager.create_backup(username)
-    return jsonify(result)
-
-
-@app.route('/api/backup/list', methods=['GET'])
-@login_required
-def api_list_backups():
-    """Listet Backups auf"""
-    username = session.get('username')
-    backups = vm_manager.list_backups(username)
-    return jsonify({'backups': backups})
-
-
 # ============================================================================
 # Routes - Admin-Panel
 # ============================================================================
@@ -736,8 +824,11 @@ def admin_delete_user(username):
         vm_manager.delete_vm(username, 'debian')
         vm_manager.stop_vm(username, 'vscode')
         
-        # User-Daten löschen
-        execute_ssh_command(f"rm -rf {REMOTE_VMS_PATH}/{username}")
+        # User-Daten lokal löschen
+        user_vm_path = os.path.join(LOCAL_VMS_PATH, username)
+        if os.path.exists(user_vm_path):
+            shutil.rmtree(user_vm_path)
+            print(f"[ADMIN] ✓ User-VM-Daten gelöscht: {user_vm_path}")
         
         # User aus Liste entfernen
         del users[username]
@@ -790,13 +881,17 @@ def health():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("Theodor Litt - VM Management System")
+    print("DockerLab - VM Management System")
     print("=" * 60)
     print(f"SSH-Server: {SSH_HOST}")
     print(f"VM-Management: Windows Server 2022 + Debian + VS Code")
     print(f"Max. gleichzeitige User: 10")
-    print(f"Backup: Automatisch beim VM-Stopp")
     print("=" * 60)
+    
+    # Erstelle lokales VM-Verzeichnis
+    print(f"Erstelle VM-Datenverzeichnis: {LOCAL_VMS_PATH}")
+    os.makedirs(LOCAL_VMS_PATH, exist_ok=True)
+    print("✓ Verzeichnis bereit!")
     
     # Test SSH-Verbindung beim Start
     print("Teste SSH-Verbindung...")

@@ -7,8 +7,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # SSH-Keys für Zugriff auf Remote-Server
-      - ${USERPROFILE}/.ssh:/tmp/host-ssh:ro
+      # SSH-Keys für Zugriff auf Remote-Server (Read-Only)
+      - ${USERPROFILE}/.ssh:/root/.ssh:ro
+      # Docker-Socket für lokale VM-Verwaltung
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Lokales VM-Daten-Verzeichnis
+      - ./vm-data:/vm-data
     restart: unless-stopped
     environment:
       - SECRET_KEY=${SECRET_KEY:-theodor-litt-secret-change-in-production}
@@ -16,6 +20,12 @@ services:
       - SSH_REMOTE_HOST=${SSH_REMOTE_HOST:-100.66.170.64}
       - SSH_REMOTE_USER=${SSH_REMOTE_USER:-dataserver}
       - SSH_REMOTE_PATH=${SSH_REMOTE_PATH:-/srv/schuler-daten}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:3000')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - devnet
 

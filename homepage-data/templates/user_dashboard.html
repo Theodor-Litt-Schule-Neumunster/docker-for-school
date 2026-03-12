@@ -129,45 +129,6 @@
         </div>
     </div>
 
-    <!-- Backup Management -->
-    <div class="bg-gray-800 rounded-lg p-6 mb-8">
-        <h2 class="text-xl font-bold mb-4">
-            <i class="fas fa-save text-green-500 mr-2"></i>
-            Backup-Verwaltung
-        </h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <button @click="createBackup()" :disabled="backupLoading" class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold rounded-lg transition">
-                    <i class="fas fa-cloud-upload-alt mr-2"></i><span x-text="backupLoading ? 'Erstelle Backup...' : 'Backup erstellen'"></span>
-                </button>
-                <p class="text-sm text-gray-400 mt-2">Erstellt Snapshots aller aktiven VMs</p>
-            </div>
-
-            <div>
-                <button @click="loadBackups()" class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition">
-                    <i class="fas fa-list mr-2"></i>Backups anzeigen
-                </button>
-                <p class="text-sm text-gray-400 mt-2">Zeigt alle verfügbaren Backups</p>
-            </div>
-        </div>
-
-        <div x-show="backups.length > 0" class="mt-6">
-            <h3 class="font-bold mb-2">Verfügbare Backups:</h3>
-            <div class="space-y-2">
-                <template x-for="backup in backups" :key="backup.name">
-                    <div class="bg-gray-700 rounded p-3 flex justify-between items-center">
-                        <div>
-                            <p class="font-medium" x-text="backup.name"></p>
-                            <p class="text-xs text-gray-400" x-text="backup.size"></p>
-                        </div>
-                        <span class="text-xs text-gray-500" x-text="backup.date"></span>
-                    </div>
-                </template>
-            </div>
-        </div>
-    </div>
-
     <!-- User Profile Card -->
     <div class="bg-gray-800 rounded-lg p-6">
         <h2 class="text-xl font-bold mb-4 flex items-center">
@@ -222,7 +183,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 function vmDashboard() {
     return {
@@ -236,8 +199,6 @@ function vmDashboard() {
             debian: false,
             vscode: false
         },
-        backupLoading: false,
-        backups: [],
         
         async init() {
             await this.checkVMStatus();
@@ -248,8 +209,12 @@ function vmDashboard() {
             try {
                 const response = await fetch('/api/vm/status');
                 const data = await response.json();
-                if (data.status === 'success') {
-                    this.vmStatus = data.data;
+                
+                // API gibt Daten direkt zurück (ohne status-Wrapper)
+                if (data.windows && data.debian && data.vscode) {
+                    this.vmStatus.windows = data.windows;
+                    this.vmStatus.debian = data.debian;
+                    this.vmStatus.vscode = data.vscode;
                 }
             } catch (error) {
                 console.error('Error checking VM status:', error);
@@ -261,10 +226,12 @@ function vmDashboard() {
             try {
                 const response = await fetch(`/api/vm/${type}/start`, { method: 'POST' });
                 const data = await response.json();
-                if (data.status === 'success') {
+                
+                // Prüfe auf verschiedene Response-Formate
+                if (data.success || data.status === 'success') {
                     await this.checkVMStatus();
                 } else {
-                    alert('Fehler: ' + data.message);
+                    alert('Fehler: ' + (data.error || data.message || 'Unbekannter Fehler'));
                 }
             } catch (error) {
                 alert('Fehler beim Starten: ' + error);
@@ -274,16 +241,18 @@ function vmDashboard() {
         },
         
         async stopVM(type) {
-            if (!confirm(`${type.toUpperCase()} VM wirklich stoppen? Automatisches Backup wird erstellt.`)) return;
+            if (!confirm(`${type.toUpperCase()} VM wirklich stoppen?`)) return;
             
             this.loading[type] = true;
             try {
                 const response = await fetch(`/api/vm/${type}/stop`, { method: 'POST' });
                 const data = await response.json();
-                if (data.status === 'success') {
+                
+                // Prüfe auf verschiedene Response-Formate
+                if (data.success || data.status === 'success') {
                     await this.checkVMStatus();
                 } else {
-                    alert('Fehler: ' + data.message);
+                    alert('Fehler: ' + (data.error || data.message || 'Unbekannter Fehler'));
                 }
             } catch (error) {
                 alert('Fehler beim Stoppen: ' + error);
@@ -299,10 +268,12 @@ function vmDashboard() {
             try {
                 const response = await fetch(`/api/vm/${type}/delete`, { method: 'POST' });
                 const data = await response.json();
-                if (data.status === 'success') {
+                
+                // Prüfe auf verschiedene Response-Formate
+                if (data.success || data.status === 'success') {
                     await this.checkVMStatus();
                 } else {
-                    alert('Fehler: ' + data.message);
+                    alert('Fehler: ' + (data.error || data.message || 'Unbekannter Fehler'));
                 }
             } catch (error) {
                 alert('Fehler beim Löschen: ' + error);
@@ -314,7 +285,8 @@ function vmDashboard() {
         openVNC(type) {
             const port = this.vmStatus[type].novnc_port;
             if (port) {
-                window.open(`http://100.66.170.64:${port}/vnc.html`, '_blank');
+                // VMs laufen lokal, nicht auf dem Server
+                window.open(`http://localhost:${port}`, '_blank');
             } else {
                 alert('Kein noVNC Port verfügbar');
             }
@@ -325,10 +297,15 @@ function vmDashboard() {
             try {
                 const response = await fetch('/api/vscode/start', { method: 'POST' });
                 const data = await response.json();
-                if (data.status === 'success') {
+                
+                // Prüfe auf verschiedene Response-Formate
+                if (data.success || data.status === 'success') {
                     await this.checkVMStatus();
+                    if (data.port) {
+                        this.vmStatus.vscode.port = data.port;
+                    }
                 } else {
-                    alert('Fehler: ' + data.message);
+                    alert('Fehler: ' + (data.error || data.message || 'Unbekannter Fehler'));
                 }
             } catch (error) {
                 alert('Fehler beim Starten: ' + error);
@@ -344,10 +321,12 @@ function vmDashboard() {
             try {
                 const response = await fetch('/api/vscode/stop', { method: 'POST' });
                 const data = await response.json();
-                if (data.status === 'success') {
+                
+                // Prüfe auf verschiedene Response-Formate
+                if (data.success || data.status === 'success') {
                     await this.checkVMStatus();
                 } else {
-                    alert('Fehler: ' + data.message);
+                    alert('Fehler: ' + (data.error || data.message || 'Unbekannter Fehler'));
                 }
             } catch (error) {
                 alert('Fehler beim Stoppen: ' + error);
@@ -359,41 +338,10 @@ function vmDashboard() {
         openVSCode() {
             const port = this.vmStatus.vscode.port;
             if (port) {
-                window.open(`http://100.66.170.64:${port}`, '_blank');
+                // VS Code läuft lokal, nicht auf dem Server
+                window.open(`http://localhost:${port}`, '_blank');
             } else {
                 alert('Kein Port verfügbar');
-            }
-        },
-        
-        async createBackup() {
-            this.backupLoading = true;
-            try {
-                const response = await fetch('/api/backup/create', { method: 'POST' });
-                const data = await response.json();
-                if (data.status === 'success') {
-                    alert('Backup erfolgreich erstellt!');
-                    await this.loadBackups();
-                } else {
-                    alert('Fehler: ' + data.message);
-                }
-            } catch (error) {
-                alert('Fehler beim Erstellen: ' + error);
-            } finally {
-                this.backupLoading = false;
-            }
-        },
-        
-        async loadBackups() {
-            try {
-                const response = await fetch('/api/backup/list');
-                const data = await response.json();
-                if (data.status === 'success') {
-                    this.backups = data.data;
-                } else {
-                    alert('Fehler: ' + data.message);
-                }
-            } catch (error) {
-                alert('Fehler beim Laden: ' + error);
             }
         }
     }

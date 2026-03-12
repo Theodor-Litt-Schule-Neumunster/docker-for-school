@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Admin-Panel - Theodor Litt{% endblock %}
+{% block title %}Admin-Panel - DockerLab{% endblock %}
 
 {% block content %}
 <div x-data="adminPanel()" x-init="init()" x-cloak data-user-stats='{{ user_stats|default({})|tojson|safe }}'>
